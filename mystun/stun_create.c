@@ -1,5 +1,5 @@
 /*
- * $Id: stun_create.c,v 1.2 2003/12/13 20:59:19 jiri Exp $
+ * $Id: stun_create.c,v 1.3 2003/12/16 10:10:30 gabriel Exp $
  *
  * Copyright (C) 2001-2003 iptel.org/FhG
  *
@@ -25,6 +25,7 @@
  * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
  *
  */
+
 #include "stun_create.h"
 #include "common.h"
 #include "globals.h"
@@ -68,7 +69,7 @@ int get_rand128(t_uint128 *tid)
     }
     for(i=0;i<16;i++)
 	v[i]=random();
-    //de la fiecare iau al 4 lea octet
+    //a take the 4th byte from everyone
     for(i=0;i<16;i++)
 	{
 	    tmp = (char *)&(v[i]);
@@ -166,7 +167,7 @@ int format_stun_change_request(char *buf,unsigned int len,t_stun_change_request 
     ts = htons(cr->header.len);
     memcpy(pos,&ts,2);pos+=2;
     tl = htonl(cr->value);
-    memcpy(pos,&tl,4);pos+=2;
+    memcpy(pos,&tl,4);pos+=4; /* bug here was +2 */
     
     return pos-buf;
 }
@@ -429,9 +430,16 @@ int create_stun_binding_request(t_stun_message *msg)
     t_stun_header header;
     t_uint128 tid;
     
+    
     memset(msg,0,sizeof(t_stun_message));
-    if (get_rand128(&tid) < 0) return -1;
+    if (get_rand128(&tid) < 0) 
+    {
+	LOG("ERROR:Cannot obtain RANDOMNESS\n");
+	return -1;
+    }
     if (create_stun_header(MSG_TYPE_BINDING_REQUEST,0,tid,&header) < 0) return -2;
+    
+    LOG("NOTICE:Created message with id %x-%x\n",tid.bytes[0],tid.bytes[1]);
     msg->header = header;
     return 1;
 }
@@ -450,7 +458,6 @@ int format_stun_binding_request(t_stun_message *msg)
     msg->len -= res;
     msg->pos = msg->buff+msg->buff_len;
     msg->header.msg_len = 0;
-    
     if (msg->u.req.is_response_address)
     {
 	    res = format_stun_address(msg->pos,msg->len,&msg->u.req.response_address);    
@@ -459,9 +466,10 @@ int format_stun_binding_request(t_stun_message *msg)
 	    msg->pos = msg->buff+msg->buff_len;
 	    msg->header.msg_len += msg->u.req.response_address.header.len + STUN_ATTR_HEADER_LEN;
     }
+    
     if (msg->u.req.is_change_request)
     {
-	    res = format_stun_address(msg->pos,msg->len,&msg->u.req.change_request);    
+	    res = format_stun_change_request(msg->pos,msg->len,&msg->u.req.change_request);    
 	    msg->buff_len += res;
 	    msg->len -= res;
 	    msg->pos = msg->buff+msg->buff_len;
@@ -479,7 +487,7 @@ int format_stun_binding_request(t_stun_message *msg)
 
     if (msg->u.req.is_message_integrity)
     {
-	    res = format_stun_address(msg->pos,msg->len,&msg->u.req.message_integrity);    
+	    res = format_stun_message_integrity(msg->pos,msg->len,&msg->u.req.message_integrity);    
 	    msg->buff_len += res;
 	    msg->len -= res;
 	    msg->pos = msg->buff+msg->buff_len;
@@ -669,7 +677,7 @@ int format_stun_binding_response(t_stun_message *msg)
     }
     if (msg->u.resp.is_message_integrity)
     {
-	    res = format_stun_address(msg->pos,msg->len,&msg->u.resp.message_integrity);    
+	    res = format_stun_message_integrity(msg->pos,msg->len,&msg->u.resp.message_integrity);    
 	    msg->buff_len += res;
 	    msg->len -= res;
 	    msg->pos = msg->buff+msg->buff_len;
