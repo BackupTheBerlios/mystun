@@ -1,5 +1,5 @@
 /*
- * $Id: stun_types.h,v 1.2 2003/12/13 20:59:19 jiri Exp $
+ * $Id: stun_types.h,v 1.3 2003/12/14 13:46:37 gabriel Exp $
  *
  * Copyright (C) 2001-2003 iptel.org/FhG
  *
@@ -101,8 +101,8 @@ typedef	struct mapped_address	t_stun_changed_address;
 typedef	struct mapped_address	t_stun_source_address;
 typedef struct mapped_address	t_stun_reflected_from;
 
-#define CHANGE_IP_FLAG		0x00000002//is bit 29	0xffffffff
-#define	CHANGE_PORT_FLAG	0x00000004//is bit 30	
+#define CHANGE_IP_FLAG		0x4	//is bit 29	0xffffffff
+#define	CHANGE_PORT_FLAG	0x2	//is bit 30	
 typedef	struct 
 	{
 	    t_stun_attr_header	header;
