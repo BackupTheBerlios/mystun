@@ -38,16 +38,19 @@
 #include <netinet/in.h>
 #include <arpa/inet.h>
 #include <net/if.h>
+#include <pwd.h>
+#include <grp.h>
+#include <sys/types.h>
 #endif
 
 
 #include <stdlib.h>
 #include <stdio.h>
-#include <sys/types.h>
 #include <signal.h>
 
 #include <string.h>
 #include <errno.h>
+
 
 
 //#include <sys/mman.h>
@@ -130,6 +133,36 @@ DisplayErrorText(int param)
 #endif
 #ifndef WIN32
 
+static short str2i(const char* val, unsigned int* result)
+{
+	unsigned int ret=0;
+	int i=0;
+	const char* str = val;
+	const char* init = str;
+
+	for(; (*str != '\0') && (*str == ' '); str++);
+
+	for(; *str != '\0';str++){
+	    if ( (*str <= '9' ) && (*str >= '0') ){
+		ret=ret*10+*str-'0';
+		i++;
+		if (i>10) goto error_digits;
+	    } 
+	    else
+		goto error_char;
+	}
+
+	*result = ret;
+	return 0;
+
+error_digits:
+	LOG("str2i: too many letters in [%s]\n", init);
+	return -1;
+error_char:
+	//LOG("str2i: unexpected char %c in %s\n", *str, init);
+	return -1;
+}
+
 /* daemon init, return 0 on success, -1 on error */
 int daemonize()
 {
@@ -137,35 +170,59 @@ int daemonize()
 	pid_t pid;
 	int r, p;
 
-
 	p=-1;
-
-
-	if (chroot_dir&&(chroot(chroot_dir)<0))
-    {
+	if (chroot_dir && (chroot(chroot_dir) < 0))
+	{
 		LOG("Cannot chroot to %s: %s\n", chroot_dir, strerror(errno));
 		goto error;
 	}
-/*	
-	if (chdir(info.working_dir)<0)
-    {
-		LOG("cannot chdir to %s: %s\n", info.working_dir, strerror(errno));
+
+	if (working_dir && (chdir(working_dir) < 0))
+	{
+		LOG("cannot chdir to %s: %s\n", working_dir, strerror(errno));
 		goto error;
 	}
 
-    // CHANGE UID
-	if (info.gid&&(setgid(info.gid)<0))
-    {
-		LOG("cannot change gid to %d: %s\n", info.gid, strerror(errno));
+	if( user ){
+	    unsigned int uid;
+	    if(str2i(user,&uid)){
+	    	struct passwd* pwnam = getpwnam(user);
+	    	if(pwnam != NULL){
+		    uid = pwnam->pw_uid;
+	    	}
+	    	else{
+		    LOG("could not find user '%s' in the user database.\n",
+			user);
+		    goto error;
+	        }
+	    }
+	    if(setuid(uid)<0){
+		LOG("cannot change uid to %i: %s",
+		    uid, strerror(errno));
 		goto error;
+	    }
 	}
-	
-	if(info.uid&&(setuid(info.uid)<0))
-    {
-		LOG("cannot change uid to %d: %s\n", info.uid, strerror(errno));
+
+	if( group ){
+	    unsigned int gid;
+	    if(str2i(group,&gid)){
+	    	struct group* grnam = getgrnam(group);
+	    	if(grnam != NULL){
+		    gid = grnam->gr_gid;
+	    	}
+	    	else{
+		    LOG("could not find group '%s' in the group database.\n",
+			group);
+		    goto error;
+	        }
+	    }
+	    if(setgid(gid)<0){
+		LOG("cannot change gid to %i: %s",
+		    gid, strerror(errno));
 		goto error;
+	    }
 	}
-*/
+
 	/* fork to become!= group leader*/
 	if ((pid=fork())<0)
     {
@@ -199,7 +256,6 @@ int daemonize()
 	/* added by noh: create a pid file for the main process */
 	if (pid_file!=0)
     {
-		
 		if ((pid_stream=fopen(pid_file, "r"))!=NULL){
 			fscanf(pid_stream, "%d", &p);
 			fclose(pid_stream);

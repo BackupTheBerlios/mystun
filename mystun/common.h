@@ -36,7 +36,6 @@
 #define LOG printf
 #define DBG printf
 #define LOGL printf
-#endif			
 
 /*
 #define LOG(lev, fmt, args...) \
@@ -71,8 +70,8 @@
 				} \
 			}while(0)
 
+
 */
 
-
-
+#endif			
 #endif

@@ -200,11 +200,11 @@ int cleanup(int how)
 void handle_sigs(int sem)
 {
     if (sem == SIGHUP)
-	{
+    {
 	    LOG("pid %d received SIGHUP\n",getpid());
 	    return ;
-	}
-    //LOG("pid %d received %d\n",getpid(),sem);
+    }
+
     if ((sem == SIGTERM)||(sem == SIGINT))
     {
 	cleanup(0);   
@@ -477,6 +477,7 @@ int start_server()
 	{
 	    sleep(10);//to be sure
 	    cleanup(1);
+	    while(wait(0)>0);
 	    return 0;
 	}
     	    		    
@@ -572,15 +573,15 @@ int main(int argc,char **argv)
                   
 			case '?':
 					if (isprint(optopt))
-						fprintf(stderr, "Unknown option `-%c´.\n", optopt);
+						fprintf(stderr, "Unknown option `-%c.\n", optopt);
 					else
 						fprintf(stderr, 
-								"Unknown option character `\\x%x´.\n",
+								"Unknown option character `\\x%x.\n",
 								optopt);
 					goto error;
 			case ':':
 					fprintf(stderr, 
-								"Option `-%c´ requires an argument.\n",
+								"Option `-%c requires an argument.\n",
 								optopt);
 					goto error;
 			default:
@@ -589,12 +590,8 @@ int main(int argc,char **argv)
 	}
 
 
-    if (dont_fork == 0) 
-    {
-	daemonize();
-    }
-
-
+    if ((dont_fork == 0) && (daemonize() < 0)) 
+	return -1;
     
     if (sock_no == 0)
     if (add_interfaces(0,AF_INET,0) == -1) //ipv4 interfaces
