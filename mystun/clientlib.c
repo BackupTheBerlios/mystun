@@ -1,30 +1,3 @@
-/*
- * $Id: clientlib.c,v 1.2 2003/12/13 20:59:19 jiri Exp $
- *
- * Copyright (C) 2001-2003 iptel.org/FhG
- *
- * This file is part of ser, a free SIP server.
- *
- * ser is free software; you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation; either version 2 of the License, or
- * (at your option) any later version
- *
- * For a license to use the ser software under conditions
- * other than those described here, or to purchase support for this
- * software, please contact iptel.org by e-mail at the following addresses:
- *    info@iptel.org
- *
- * ser is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License 
- * along with this program; if not, write to the Free Software 
- * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
- *
- */
 #include "clientlib.h"
 #include "stun_create.h"
 #include "stun_parse.h"
@@ -48,6 +21,8 @@ int send_rcv_msg_over_udp(t_stun_message *req,t_stun_message *response,struct so
     unsigned int fromlen;
     unsigned int len;
     char buf [BUF_SIZE+1];
+    long time_now ;
+    long time_max;
 
     
     retries = 0;
@@ -57,7 +32,9 @@ int send_rcv_msg_over_udp(t_stun_message *req,t_stun_message *response,struct so
     FD_SET(source->socket,&fdSet); 
     fdSetSize = source->socket+1;
     tv.tv_sec=0;
-    tv.tv_usec=100*1000; // 100 ms 
+    time_max  =4000*1000; //4s
+    time_now  =1000*1000; //1s
+    tv.tv_usec=time_now; // 1 s 
 
     //we try several times in case of failure
 send_again:
@@ -77,7 +54,7 @@ send_again:
 //but 10 seconds it too much
 
 //page 16, we should retransmit starting with 100ms and doubling it until 1.6s,
-    
+      tv.tv_usec = time_now;
       err = select(fdSetSize, &fdSet, NULL, NULL, &tv);
       if (err < 0)
         {
@@ -85,12 +62,12 @@ send_again:
 	    goto send_again;
 	}
       else 
-        if (err == 0)
+        if (err == 0) /* timeout */
 	    {
-		LOG("send_rcv_msg_over_udp:no response in %ldms.maybe doubling\n",tv.tv_usec);
-		if (tv.tv_usec < 1600*1000) tv.tv_usec *= 2;
+		LOG("send_rcv_msg_over_udp:no response in %ld ms.maybe if doubling...\n",time_now);
+		if (time_now < time_max) time_now *= 2;
 		else rcv_retries ++;
-		if (rcv_retries == 9)
+		if (rcv_retries == 3)
 		    {
 			LOG("send_rcv_msg_over_udp:giving up\n");
 			return -2;
@@ -121,9 +98,9 @@ read_again:
 
 	if (len%4!=0)
 	    LOG("Message length is not modulo 4!!!!!\n");
-        if ((parse_msg(0,buf,len,response)) < 0)
-	{
-	    LOG("test1:error parsing message\n");
+        if ((err=parse_msg(0,buf,len,response)) < 0)
+	{    
+	    LOG("send_rcv_msg_over_udp:error parsing message of %d len return %d\n",len,err);
     	    return -5;
 	}
 	if (memcmp(&(req->header.tid.bytes),&(response->header.tid.bytes),16) != 0)
@@ -199,8 +176,7 @@ int test1(struct socket_info *source,union sockaddr_union *dest,t_stun_changed_a
     int err;
 
     //i should request an username and password
-        
-        
+    LOG("NOTICE:Starting TEST1\n");    
     //we create a  STUN Binding request
     if (create_stun_binding_request(&binding_request) < 0)
     {
@@ -209,11 +185,12 @@ int test1(struct socket_info *source,union sockaddr_union *dest,t_stun_changed_a
     }
     
     err = send_rcv_msg_over_udp(&binding_request,&response,source,dest);
-    
+/*    
+    if (err < 0) //try again
+	err = send_rcv_msg_over_udp(&binding_request,&response,source,dest);	
     if (err < 0) //try again
 	err = send_rcv_msg_over_udp(&binding_request,&response,source,dest);
-    if (err < 0) //try again
-	err = send_rcv_msg_over_udp(&binding_request,&response,source,dest);
+*/	
     if (err < 0)
 	{
 	    if (err == -2)	//no response
@@ -233,6 +210,7 @@ int test1(struct socket_info *source,union sockaddr_union *dest,t_stun_changed_a
     //i compare with the response from mapped_address.if == it's not  nat and go to test 2
     
     naddress = htonl(response.u.resp.mapped_address.address);
+    LOG("NOTICE:TEST1 finished\n");
     if ((htons(response.u.resp.mapped_address.port) == source->su.sin.sin_port)
 	&&
 	(memcmp(&(naddress),&(source->su.sin.sin_addr),4) == 0))
@@ -248,7 +226,8 @@ int test2(struct socket_info *source,union sockaddr_union *dest)
     t_stun_message response;
     t_uint32 		naddress;
     int err;
-        
+    
+    LOG("NOTICE:Starting TEST2\n");
     if (create_stun_binding_request(&binding_request) < 0)
     {
 	LOG("test2:unable to create message\n");
@@ -262,11 +241,12 @@ int test2(struct socket_info *source,union sockaddr_union *dest)
     binding_request.u.req.is_change_request = 1;
 
     err = send_rcv_msg_over_udp(&binding_request,&response,source,dest);
-    
+/*    
     if (err < 0) //try again
 	err = send_rcv_msg_over_udp(&binding_request,&response,source,dest);
     if (err < 0) //try again
 	err = send_rcv_msg_over_udp(&binding_request,&response,source,dest);
+*/	
     if (err < 0)
 	{
 	    if (err == -2)	//no response
@@ -282,6 +262,7 @@ int test2(struct socket_info *source,union sockaddr_union *dest)
 	return -6;
     }
     naddress = htonl(response.u.resp.mapped_address.address);
+    LOG("NOTICE:TEST2 finished\n");
     if ((htons(response.u.resp.mapped_address.port) == source->su.sin.sin_port)
 	&&
 	(memcmp(&(naddress),&(source->su.sin.sin_addr),4) == 0))
@@ -289,6 +270,7 @@ int test2(struct socket_info *source,union sockaddr_union *dest)
 	else return IP_NOT_SAME;
 }
 
+/* not tested yet, I did not find such a nat */
 int test3(struct socket_info *source,union sockaddr_union *dest)
 {
     t_stun_message binding_request;
@@ -298,6 +280,7 @@ int test3(struct socket_info *source,union sockaddr_union *dest)
     int err;
     
     //creez si trimit un STUN Binding request
+    LOG("NOTICE:Starting TEST3\n");
     if (create_stun_binding_request(&binding_request) < 0)
     {
 	LOG("test3:unable to create message\n");
@@ -311,11 +294,12 @@ int test3(struct socket_info *source,union sockaddr_union *dest)
     binding_request.u.req.is_change_request = 1;
     
     err = send_rcv_msg_over_udp(&binding_request,&response,source,dest);
-    
+/*    
     if (err < 0) //try again
 	err = send_rcv_msg_over_udp(&binding_request,&response,source,dest);
     if (err < 0) //try again
 	err = send_rcv_msg_over_udp(&binding_request,&response,source,dest);
+*/	
     if (err < 0)
 	{
 	    if (err == -2)	//no response
@@ -330,6 +314,7 @@ int test3(struct socket_info *source,union sockaddr_union *dest)
 	LOG("test3:unespected response:%x\n",response.header.msg_type);
 	return -6;
     }
+    LOG("NOTICE:TEST3 finished\n");
     naddress = htonl(response.u.resp.mapped_address.address);
     if ((htons(response.u.resp.mapped_address.port) == source->su.sin.sin_port)
 	&&
@@ -344,7 +329,8 @@ t_stun_nat_type determine_nat_type(struct socket_info *si,union sockaddr_union *
     int res1,res2,res3;
     t_stun_changed_address ca;
     union sockaddr_union  nsu;
-        
+    t_uint32 addr;
+    struct ip_addr ip;    
     
     if (udp_init(si) < 0) goto error;
     res1 = test1(si,su,&ca);
@@ -353,6 +339,7 @@ t_stun_nat_type determine_nat_type(struct socket_info *si,union sockaddr_union *
     
     res2 = test2(si,su);
     if (res2 < 0) goto error;
+    
     if (res1 == IP_SAME)
 	{
 	    if (res2 == NO_RESPONSE)	return SYMMETRIC_UDP_FIREWALL;
@@ -362,8 +349,16 @@ t_stun_nat_type determine_nat_type(struct socket_info *si,union sockaddr_union *
 	{
 	    if (res2 == NO_RESPONSE)	
 		{
-		    memcpy(&(nsu.sin.sin_addr),&(ca.address),4);
-		    nsu.sin.sin_port = ca.port;
+	    	    addr = htonl(ca.address);
+		    memset(&ip,0,sizeof(struct ip_addr));
+		    ip.af = AF_INET;
+		    memcpy(ip.u.addr,&addr,4);
+		    init_su(&nsu,&ip,ca.port);
+		    LOG("NOTICE:Now sending to :port:%d address:",ca.port);print_ip(&ip);LOG("\n");
+		    /*
+		    memcpy(&(nsu.sin.sin_addr),&(addr),4);
+		    nsu.sin.sin_port = htons(ca.port);
+		    */
 		    res1 = test1(si,&nsu,0);//we send to CHANGED_ADDRESS received in  test1
 		    if (res1 < 0) goto error;
 		    
@@ -398,11 +393,13 @@ int determine_external_address(struct socket_info *source,union sockaddr_union *
 	return -1;
     }
     err = send_rcv_msg_over_udp(&binding_request,&response,source,su);
-    
+
+/*    
     if (err < 0) //try again
 	err = send_rcv_msg_over_udp(&binding_request,&response,source,su);
     if (err < 0) //try again
 	err = send_rcv_msg_over_udp(&binding_request,&response,source,su);
+*/	
     if (err < 0)
 	{
 	    if (err == -2)	//no response
