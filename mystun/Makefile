@@ -7,6 +7,11 @@ CFLAGS=-DOPENSSL_NO_KRB5
 SERVERNAME=server.exe
 CLIENTNAME=client.exe
 
+DESTDIR ?= /usr/local
+INSTALL ?= install
+BIN-DIR ?= bin/
+
+
 all: server client
 
 client: client.h client.c main.o utils.o udp_server.o stun_parse.o stun_create.o ip_addr.o clientlib.o server.o
@@ -43,3 +48,15 @@ clientlib.o: clientlib.h clientlib.c
 
 clean:
 	rm -f *.o ${SERVERNAME} ${CLIENTNAME}
+
+install: all mk-install-dirs install-bin
+
+mk-install-dirs: $(DESTDIR)/$(BIN-DIR)
+
+$(DESTDIR)/$(BIN-DIR):
+	mkdir -p $(DESTDIR)/$(BIN-DIR)
+
+install-bin: $(DESTDIR)/$(BIN-DIR)
+	$(INSTALL) $(SERVERNAME) $(DESTDIR)/$(BIN-DIR)
+	$(INSTALL) $(CLIENTNAME) $(DESTDIR)/$(BIN-DIR)
+
