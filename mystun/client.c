@@ -23,11 +23,12 @@
  * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
  *
  */
+
 #include "client.h"
 #include "clientlib.h"
 #include "common.h"
 #include "ip_addr.h"
-
+#include "globals.h"
 
 #ifndef WIN32
 #include <unistd.h>
@@ -57,18 +58,19 @@
 #include <string.h>
 
 static char help[] = "\n\t-d address of STUN server \n"
-"\t-p address of STUN server \n"
+"\t-p port of STUN server \n"
 "\t-s source address of request\n"
 "\t-P port of the request\n"
+"\t-e show debug information\n"
 "\t-v version and compile info\n"
 "\t-h help message(this message)\n\n";
 static t_uint16 default_destination_port = 3478;
 static t_uint16 default_source_port = 50001;
-static char *version = "0.0.1";
+static char *version = "0.0.2";
 static char *compiled= __TIME__ " " __DATE__ ;
 #define MAX_ADDRESS_LEN 255
 char daddress[MAX_ADDRESS_LEN] = "127.0.0.1";
-int sinterface;
+int sinterface = 1;
 
 struct socket_info si;
 union sockaddr_union su;
@@ -168,7 +170,7 @@ int client_add_interfaces(char* if_name, int family, unsigned short port)
 
 		if ((if_name==0)||(strncmp(if_name, ifr.ifr_name, sizeof(ifr.ifr_name))==0))
         {
-			/* LOG("Trying to add an address %d\n",sock_number); */
+			/* if (log_1) LOG("Trying to add an address %d\n",sock_number); */
 				/*add address*/
 			if (sock_number<M_LISTEN)
 			{
@@ -228,10 +230,10 @@ int  get_sending_socket()
     {
     if (client_add_interfaces(0,AF_INET,0) == -1) //ipv4 interfaces
         {
-            LOG("error finding addresses\n");
+            if (log_1) LOG("error finding addresses\n");
             return -1;
         }
-    //LOG("after general %d interfaces\n",sock_number);
+    //if (log_1) LOG("after general %d interfaces\n",sock_number);
     }
 
     for (r=0; r<sock_number;)
@@ -246,18 +248,22 @@ int  get_sending_socket()
 		}
 		r++;
 	}
-    LOG("Located %d interfaces \n",sock_number);
+    if (log_1) LOG("Located %d interfaces \n",sock_number);
     for(r=0;r<sock_number;r++)
     {
-	LOG("    [%.*s] ", sock_info[r].name.len,sock_info[r].name.s);
-        LOG("ip->");print_ip(&(sock_info[r].address));
-        LOG("\n");
+	if (log_1) 
+	{
+	    LOG("    [%.*s] ", sock_info[r].name.len,sock_info[r].name.s);
+    	    LOG("ip->");print_ip(&(sock_info[r].address));
+    	    LOG("\n");
+	}
     }
 
 
-    printf("Sending FROM:%.*s:%d\n",sock_info[sinterface].name.len,sock_info[sinterface].name.s,default_source_port);
-    printf("Sending TO:%s:%d\n",daddress,default_destination_port);
+    if (log_1) LOG("Sending FROM:%.*s:%d\n",sock_info[sinterface].name.len,sock_info[sinterface].name.s,default_source_port);
+    if (log_1) LOG("Sending TO:%s:%d\n",daddress,default_destination_port);
 
+	if (sock_info[sinterface].is_lo) LOG("ERROR:Sending interface is loopback\n");
     sock_info[sinterface].port_no = default_source_port;
 
     return sinterface;
@@ -278,7 +284,7 @@ int network_start()
    if ( err != 0 )
    {
       // could not find a usable WinSock DLL
-      LOG("ERROR:Could not load winsock\n");
+      if (log_1) LOG("ERROR:Could not load winsock\n");
       return -1;
    }
 
@@ -293,7 +299,7 @@ int network_start()
       /* Tell the user that we could not find a usable */
       /* WinSock DLL.                                  */
       WSACleanup( );
-      LOG("ERROR:Bad winsock version:%d.%d\n",LOBYTE( wsaData.wVersion ),HIBYTE( wsaData.wVersion ));
+      if (log_1) LOG("ERROR:Bad winsock version:%d.%d\n",LOBYTE( wsaData.wVersion ),HIBYTE( wsaData.wVersion ));
       return -2;
    }
 
@@ -318,13 +324,17 @@ int linux_main(int argc, char **argv)
 		printf("USAGE:%s\n",help);
 		return 0;
 	}
-
-	options="i:d:p:P:vh";
+	
+	log_1 = 0;
+	options="i:d:p:P:vhe";
 
 	while((c=getopt(argc,argv,options))!=-1)
 	{
 			switch(c)
 			{
+				case 'e':
+							log_1 = 1;
+							break;
 				case 'i':
 						tmp = 0;
 						sinterface = strtol(optarg, &tmp, 10);
@@ -404,7 +414,7 @@ int linux_main(int argc, char **argv)
 	r = get_sending_socket();
 	if (r < 0)
 	{
-	    LOG("Failed to obtain sending address\n");
+	    if (log_1) LOG("Failed to obtain sending address\n");
 	    return 7;
 	}
 
@@ -427,11 +437,11 @@ int linux_main(int argc, char **argv)
             he = gethostbyname2(daddress, ia.sin_family);
             if (he == NULL)
 	    {
-                LOG("ERROR:gethostbyname of %s failed", daddress);
+                if (log_1) LOG("ERROR:gethostbyname of %s failed", daddress);
             }
             bcopy(he->h_addr, &ia.sin_addr, he->h_length);
 #else
-	    LOG("ERROR:%s: invalid ip address", daddress);
+	    if (log_1) LOG("ERROR:%s: invalid ip address", daddress);
 #endif
 	    if (he) free(he);
 	}
@@ -487,6 +497,9 @@ int linux_main(int argc, char **argv)
 int win_main(int argc, char **argv)
 {
 
+	struct hostent* localHost;
+	char hostname[1024];
+	int ret;
 	char *tmp;
 	t_stun_nat_type result;
     struct ip_addr ipad;
@@ -494,22 +507,59 @@ int win_main(int argc, char **argv)
 	t_uint32 ip;
 	struct sockaddr_in ia;
 	struct in_addr sin_addr;
+	int mode;
 
 	//printf("Argc:%d\n",argc);
-	if (argc != 5)
+	mode = 0;
+	log_1 = 0;
+
+	if (argc == 3)
 	{
-		printf("USAGE: client local_address port stun_server port\n");
+		mode = 1;//client [default address:port] server port [debug]
+	}
+	if (argc == 4)
+	{
+		mode = 2;//client [default address:port] server port debug
+		log_1 = 1;
+	}	
+	if (argc == 5)
+	{
+		mode = 3;//client default address:port server port [debug]
+		//printf("USAGE: client local_address port stun_server port\n");
+
+	}
+	if (argc == 6)
+	{
+		mode = 4;//client default address:port server port debug
+		log_1 = 1;
+	}
+	if (mode == 0)
+	{
+		printf("\nUsage:\n\tclient [default_address default_port] server port [debug]");
+		printf("        \n\tclient [default_address default_port] server port debug");
+		printf("        \n\tclient default_address default_port server port [debug]");
+		printf("        \n\tclient default_address default_port server port debug\n");
+		printf("Version :%30s\n",version);
+		printf("Compiled:%30s\n",compiled);
+		
 		return 0;
 	}
 
+	/* printf("Using mode %d\n",mode);*/
 	tmp = 0;
-	default_destination_port = strtol(argv[4], &tmp, 10);
+	if ((mode == 1)||(mode == 2)) default_destination_port = strtol(argv[2], &tmp, 10);
+	else 
+		if ((mode == 3)||(mode == 4)) default_destination_port = strtol(argv[4], &tmp, 10);
+
 	if (tmp &&(*tmp))
 		{
 			fprintf(stderr, "bad port number: -p [%s] %d\n", argv[4],default_destination_port);
 			return 2;
 		}
-	default_source_port = strtol(argv[2], &tmp, 10);
+
+	if ((mode == 1) || (mode == 2))	default_source_port = 0;
+		else
+			if ((mode == 3)||(mode == 4)) default_source_port = strtol(argv[2], &tmp, 10);
 	if (tmp &&(*tmp))
 		{
 			fprintf(stderr, "bad port number: -p [%s] %d\n", argv[2],default_destination_port);
@@ -518,11 +568,51 @@ int win_main(int argc, char **argv)
 
 	if (network_start()<0)
 	{
-		LOG("ERROR:Unable to start network services\n");
+		if (log_1) LOG("ERROR:Unable to start network services\n");
 		return 9;
 	}
 
+	ret = gethostname((char *)hostname,1022);
+	if (log_1) 
+	{
+		if (ret < 0) LOG("ERROR:gethostname\n");
+		else LOG("HOSTNAME:%s\n",hostname);
+	}
+	localHost = NULL;
+	localHost = gethostbyname(0);//gethostname((char *)hostname,1022)
 
+	if (localHost == NULL)
+	{
+		if (log_1) LOG("ERROR:gethostbyname\n");
+		return 21;
+	}
+	/*
+	if (WSAGetLastError() != 0)
+	{
+	  if (log_1) 
+	  {
+		  LOG("gethostname error.code is %d:",WSAGetLastError());
+		  DisplayErrorText(WSAGetLastError());
+		  LOG("\n");
+	  }
+	  return 21;
+	}
+	*/
+	//if (log_1) LOG("Running on %s\n",hostname);
+	if (localHost->h_length != sizeof(t_uint32))
+	{
+		if (log_1) LOG("ERROR:you are not using IPv4 !?\n");
+		return 22;
+	}
+	
+	memcpy(&ip,localHost->h_addr_list[0],4);
+	/* windows does not put the loopback address in here so it's sure a good address */
+	if (ip == 0)
+	{
+		if (log_1) LOG("ERROR:you do not seem to have a network connection !\n");
+	}
+	if (log_1) LOG("Detected IP is %X\n",ip);
+/*	
     if ( isdigit( argv[1][0] ) )
 	{
 		ip = inet_addr(argv[1]);		
@@ -533,7 +623,7 @@ int win_main(int argc, char **argv)
 	   h = gethostbyname( argv[1] );
 	   if ( h == NULL )
 	   {
-		   LOG("ERROR:Cannot resolve host name\n");
+		   if (log_1) LOG("ERROR:Cannot resolve host name\n");
 		   return 11;
 	   }
 	   else
@@ -543,8 +633,8 @@ int win_main(int argc, char **argv)
 	   }
 	  }
 
-
-	LOG("Sending from ip %x\n",ip);
+*/
+	/*if (log_1) LOG("Sending from ip %X\n",ip);*/
 
 	ipad.af=AF_INET;
 	ipad.len=4;
@@ -553,19 +643,21 @@ int win_main(int argc, char **argv)
 	si.address = ipad;
 	si.port_no = default_source_port;
 	
-
-
-    if ( isdigit( argv[3][0] ) )
+	/* obtaining the destination address */
+	if ((mode == 1)||(mode == 2)) ret = 1;
+		else 
+		if ((mode == 3)||(mode == 4)) ret = 3;
+    if ( isdigit( argv[ret][0] ) )
 	{
-		ip = inet_addr(argv[3]);		
+		ip = inet_addr(argv[ret]);		
 	    //ip = ntohl( ip );
 	}
 	else
 	{
-	   h = gethostbyname( argv[3] );
+	   h = gethostbyname( argv[ret] );
 	   if ( h == NULL )
 	   {
-		   LOG("ERROR:Cannot resolve host name\n");
+		   if (log_1) LOG("ERROR:Cannot resolve host name\n");
 		   return 11;
 	   }
 	   else
@@ -575,7 +667,7 @@ int win_main(int argc, char **argv)
 	   }
 	  }
 	
-	LOG("Sending to ip %x\n",ip);
+	/*if (log_1) LOG("Sending to ip %x\n",ip);*/
 
 	memcpy(&ia.sin_addr,&ip,4);
 	ia.sin_port = htons(default_destination_port);
@@ -586,8 +678,8 @@ int win_main(int argc, char **argv)
 
 	su.sin = ia;
 
-    printf("Sending TO:%s:%d\n",argv[3],default_source_port);
-    printf("Sending FROM:%s:%d\n",argv[1],default_destination_port);
+    if (log_1) LOG("Sending TO:%s:%d\n",argv[ret],default_destination_port);
+    //if (log_1) LOG("Sending FROM:%s:%d\n",argv[1],default_destination_port);
 
 
 	result = determine_nat_type(&si,&su);
@@ -613,7 +705,7 @@ int win_main(int argc, char **argv)
 			printf("Client seems to be behind a RESTRICTED CONE NAT\n");
 			break;
 		case RESTRICTED_PORT_CONE_NAT:
-			printf("Client seems to be behind a RESTRICTED PORT CONE NAT\n");
+			printf("Client seems to be behind a PORT RESTRICTED CONE NAT\n");
 			break;
 		case BLOCKED:
 			printf("Client seems to be BLOCKED(or perhaps the STUN server is not there?)\n");

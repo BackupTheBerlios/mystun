@@ -1,6 +1,4 @@
 /*
- * $Id: stun_types.h,v 1.5 2003/12/19 01:15:19 gabriel Exp $
- *
  * Copyright (C) 2001-2003 iptel.org/FhG
  *
  * This file is part of ser, a free SIP server.

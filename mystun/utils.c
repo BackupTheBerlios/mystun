@@ -57,8 +57,9 @@
 #include <lmerr.h>
 
 void
-DisplayErrorText(DWORD dwLastError)
+DisplayErrorText(int param)
 {
+	DWORD dwLastError;
     HMODULE hModule = NULL; // default to system source
     LPSTR MessageBuffer;
     DWORD dwBufferLength;
@@ -72,6 +73,7 @@ DisplayErrorText(DWORD dwLastError)
     //  load the message source.
     //
 
+	dwLastError = (DWORD)param;
     if(dwLastError >= NERR_BASE && dwLastError <= MAX_NERR) {
         hModule = LoadLibraryEx(
             TEXT("netmsg.dll"),

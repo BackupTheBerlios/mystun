@@ -1,4 +1,6 @@
 /*
+ * $Id: utils.h,v 1.5 2004/01/18 21:40:09 gabriel Exp $
+ *
  * Copyright (C) 2001-2003 iptel.org/FhG
  *
  * This file is part of ser, a free SIP server.
@@ -23,6 +25,7 @@
  * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
  *
  */
+
 #ifndef __utils_h
 #define __utils_h
 
@@ -43,8 +46,10 @@ int add_interfaces(char* if_name, int family, unsigned short port);
 
 int compute_hmac(char* hmac,char* input, int length, const char* key, int sizeKey);
 void to_hex(const char* buffer, int bufferSize, char* output);
+
 #ifdef WIN32
-void DisplayErrorText();
+void DisplayErrorText(int);
 #endif
+
 #endif
 

@@ -350,11 +350,11 @@ int create_stun_unknown_attributes(t_uint16 *attributes,unsigned int len,t_stun_
 	    //we add them
 	    ua->attr[ua->attr_number++]=ua->attr[ua->attr_number-1];
 	}
-    LOG("create_stun_unknown_attributes:au->attr_len is %u\n",ua->attr_number);
+    if (log_1) LOG("create_stun_unknown_attributes:au->attr_len is %u\n",ua->attr_number);
     ua->header.len = 2*ua->attr_number;// 2 should divide the number of them
     ua->header.type = UNKNOWN_ATTRIBUTES;
     if (ua->header.len % 4 ) 
-	LOG("create_stun_unknown_attributtes:len not modulo 4\n");
+	if (log_1) LOG("create_stun_unknown_attributtes:len not modulo 4\n");
     return 1;
 }
 
@@ -418,7 +418,7 @@ int create_stun_message_integrity(char *msg,unsigned int len,char *key,unsigned 
 {
     if (len % 4 != 0)
     {
-	LOG("create_stun_message_integrity:len not modulo 4\n");
+	if (log_1) LOG("create_stun_message_integrity:len not modulo 4\n");
 	return -1;
     }
     if (compute_hmac(mi->hmac,msg,len,key,key_len) < 0) return -1;
@@ -451,12 +451,12 @@ int create_stun_binding_request(t_stun_message *msg)
     memset(msg,0,sizeof(t_stun_message));
     if (get_rand128(&tid) < 0) 
     {
-	LOG("ERROR:Cannot obtain RANDOMNESS\n");
+	if (log_1) LOG("ERROR:Cannot obtain RANDOMNESS\n");
 	return -1;
     }
     if (create_stun_header(MSG_TYPE_BINDING_REQUEST,0,tid,&header) < 0) return -2;
     
-    LOG("NOTICE:Created message with id %x-%x\n",tid.bytes[0],tid.bytes[1]);
+    if (log_1) LOG("NOTICE:Created message with id %x-%x\n",tid.bytes[0],tid.bytes[1]);
     msg->header = header;
     return 1;
 }
@@ -511,7 +511,7 @@ int format_stun_binding_request(t_stun_message *msg)
 	    msg->header.msg_len += msg->u.req.message_integrity.header.len + STUN_ATTR_HEADER_LEN;
     }
     res = format_stun_header(msg->buff,STUN_HEADER_LEN,&msg->header);    
-    LOG("format_stun_binding_request:header->len=%u buff_len=%u\n",msg->header.msg_len,msg->buff_len);
+    if (log_1) LOG("format_stun_binding_request:header->len=%u buff_len=%u\n",msg->header.msg_len,msg->buff_len);
 
     return 1;
 }
@@ -703,7 +703,7 @@ int format_stun_binding_response(t_stun_message *msg)
     
     //we return to the header
     res = format_stun_header(msg->buff,STUN_HEADER_LEN,&msg->header);    
-    LOG("format_stun_binding_response:header->len=%u buff_len=%u\n",msg->header.msg_len,msg->buff_len);
+    if (log_1) LOG("format_stun_binding_response:header->len=%u buff_len=%u\n",msg->header.msg_len,msg->buff_len);
     return 1;
 
 }
@@ -726,7 +726,7 @@ int create_stun_binding_error_response(t_uint8 clas,t_uint8 number,char *reason,
     if (create_stun_error_code(clas,number,reason,reason_len,&err) < 0) return -3;
     msg->u.err_resp.is_error_code = 1;
     msg->u.err_resp.error_code = err;    
-//    LOG("create_stun_binding_error_response:header->len=%u err.header.len=%u buff_len=%u\n",msg->header.msg_len,err.header.len,msg->buff_len);
+//    if (log_1) LOG("create_stun_binding_error_response:header->len=%u err.header.len=%u buff_len=%u\n",msg->header.msg_len,err.header.len,msg->buff_len);
     
     return 1;
 }
@@ -761,7 +761,7 @@ int format_stun_binding_error_response(t_stun_message	*msg)
 	    msg->header.msg_len += msg->u.err_resp.unknown_attributes.header.len + STUN_ATTR_HEADER_LEN;
     }
     res = format_stun_header(msg->buff,STUN_HEADER_LEN,&msg->header);    
-    LOG("create_stun_binding_error_response:header->len=%u buff_len=%u\n",msg->header.msg_len,msg->buff_len);
+    if (log_1) LOG("create_stun_binding_error_response:header->len=%u buff_len=%u\n",msg->header.msg_len,msg->buff_len);
     return 1;
 }
 int create_stun_shared_secret_request(t_stun_message *msg)
@@ -791,7 +791,7 @@ int format_stun_shared_secret_request(t_stun_message *msg)
 
     //nothing to add
     res = format_stun_header(msg->buff,STUN_HEADER_LEN,&msg->header);    
-    LOG("create_stun_shared_secret_request:header->len=%u buff_len=%u\n",msg->header.msg_len,msg->buff_len);
+    if (log_1) LOG("create_stun_shared_secret_request:header->len=%u buff_len=%u\n",msg->header.msg_len,msg->buff_len);
     
     return 1;
 }
@@ -820,7 +820,7 @@ int create_stun_shared_secret_response(t_stun_message *req,t_stun_message *msg)
     msg->header = header;
 
     memcpy(&client_ip,&(req->original_src.sin.sin_addr),4);
-    memcpy(&client_ip,&(req->original_src.sin.sin_port),2);
+    memcpy(&client_port,&(req->original_src.sin.sin_port),2);
     
     if (create_stun_username(NULL,0,client_ip,client_port,&username)<0) return -1;
     if (create_stun_password(NULL,0,&username,&password)<0) return -2;
@@ -873,7 +873,7 @@ int format_stun_shared_secret_response(t_stun_message *msg)
     }
     else return -2;//mandatory
     res = format_stun_header(msg->buff,STUN_HEADER_LEN,&msg->header);    
-    LOG("format_stun_shared_secret_response:header->len=%u buff_len=%u\n",msg->header.msg_len,msg->buff_len);
+    if (log_1) LOG("format_stun_shared_secret_response:header->len=%u buff_len=%u\n",msg->header.msg_len,msg->buff_len);
 
     return 1;
 }
@@ -929,7 +929,7 @@ int format_stun_shared_secret_error_response(t_stun_message *msg)
 	    msg->header.msg_len += msg->u.err_resp.unknown_attributes.header.len + STUN_ATTR_HEADER_LEN;
     }
     res = format_stun_header(msg->buff,STUN_HEADER_LEN,&msg->header);    
-    LOG("format_stun_binding_error_response:header->len=%u buff_len=%u\n",msg->header.msg_len,msg->buff_len);
+    if (log_1) LOG("format_stun_binding_error_response:header->len=%u buff_len=%u\n",msg->header.msg_len,msg->buff_len);
     return 1;        
 }
 

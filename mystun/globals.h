@@ -34,6 +34,7 @@
 #include <openssl/err.h>
 #endif
 
+extern int log_1;
 extern int sock_no;
 extern struct socket_info sock_info[];
 extern int children_no;

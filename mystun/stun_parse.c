@@ -47,7 +47,7 @@ int parse_header(char *pos,unsigned int len,t_stun_header *header)
     
     if (len < hl)
     {
-	LOG("Message to small for a header\n");
+	if (log_1) LOG("Message to small for a header\n");
 	return -1;
     }
     
@@ -58,10 +58,10 @@ int parse_header(char *pos,unsigned int len,t_stun_header *header)
         
     if	(hl + header->msg_len != len)
 	{
-	    LOG("Message size does not match header len\n");
+	    if (log_1) LOG("Message size does not match header len\n");
 	    return -2;
 	}
-    LOG("Received a request:type=%d	len=%d\n",header->msg_type,header->msg_len);	
+    if (log_1) LOG("Received a request:type=%d	len=%d\n",header->msg_type,header->msg_len);	
     
     return hl; //advance length
 }
@@ -80,10 +80,10 @@ int parse_stun_change_request(char *pos,unsigned int len,t_stun_change_request *
     t16 = (t_uint16 *)(pos+2);	cr->header.len = ntohs(*t16);    
     t32 = (t_uint32 *)(pos+4); 	cr->value = ntohl(*t32);	    
     
-    LOG("parse_change_request:[%x][%x]CHANGE_REQUEST received.value =%ld\n",cr->header.type,cr->header.len,cr->value);
+    if (log_1) LOG("parse_change_request:[%x][%x]CHANGE_REQUEST received.value =%ld\n",cr->header.type,cr->header.len,cr->value);
     
-    if (cr->value & CHANGE_IP_FLAG) 	LOG("CHANGE_IP_FLAG\n");
-    if (cr->value & CHANGE_PORT_FLAG) 	LOG("CHANGE_PORT_FLAG\n");
+    if (cr->value & CHANGE_IP_FLAG) 	if (log_1) LOG("CHANGE_IP_FLAG\n");
+    if (cr->value & CHANGE_PORT_FLAG) 	if (log_1) LOG("CHANGE_PORT_FLAG\n");
     
     return  STUN_ATTR_HEADER_LEN+STUN_CHANGE_REQUEST_LEN;    
 }
@@ -139,7 +139,7 @@ int parse_stun_address(char *pos,unsigned int len,void *address)
     
     if (len < STUN_ADDRESS_LEN) 
     {
-	LOG("ERROR:Remaining len is smaller than an address %d\n",len);
+	if (log_1) LOG("ERROR:Remaining len is smaller than an address %d\n",len);
 	return -1;
     }
     a = (struct mapped_address *)address;
@@ -153,7 +153,7 @@ int parse_stun_address(char *pos,unsigned int len,void *address)
     a->family = (t_uint8)*(pos+1);
     if ((a->family) != IPv4FAMILY) 
     {
-	LOG("ERROR:family is not IPv4 %x\n",(a->family));
+	if (log_1) LOG("ERROR:family is not IPv4 %x\n",(a->family));
 	return -2;
     }
     port = (t_uint16 *)(pos+2);
@@ -161,7 +161,7 @@ int parse_stun_address(char *pos,unsigned int len,void *address)
     ip = (t_uint32 *)(pos+4);
     a->address = ntohl(*ip);
     
-    LOG("parse_stun_address:received family %u,port %u,ip %lu\n",a->family,ntohs(a->port),a->address); 
+    if (log_1) LOG("parse_stun_address:received family %u,port %u,ip %X\n",a->family,a->port,a->address); 
    
     return STUN_ATTR_HEADER_LEN+STUN_ADDRESS_LEN;
 }
@@ -179,14 +179,14 @@ int parse_stun_error_code(char *pos,unsigned int len,t_stun_error_code *error)
     t16 = (t_uint16 *)pos;
     error->unused = ntohs(*t16);
     if (error->unused != 0)
-	LOG("parse_stun_error_code:unused != 0 !!!!\n");
+	if (log_1) LOG("parse_stun_error_code:unused != 0 !!!!\n");
     error->clas = *(pos+2);
     error->number = *(pos+3);
     error->reason_len = error->header.len - 4;
     //4 must divide the total length of the reason
     if ((error->reason_len % 4 != 0)||(error->reason_len >= MAX_STRING_LEN))
     {
-	LOG("parse_stun_error:reason_len not modulo 4 or too long!!!!!!!\n");
+	if (log_1) LOG("parse_stun_error:reason_len not modulo 4 or too long!!!!!!!\n");
 	return -2;
     }
     memcpy(error->reason,(pos+4),error->reason_len);
@@ -238,13 +238,13 @@ int parse_body_binding_request(char *pos,unsigned int len,t_stun_message *msg)
 	{
 	    if (len == 0)//binding request may be 0 length
 		{
-		    LOG("binding_request with len = 0\n");
+		    if (log_1) LOG("binding_request with len = 0\n");
 		    return 0;//parsed nothing
 		}
-	    LOG("parse_body:body to small\n");
+	    if (log_1) LOG("parse_body:body to small\n");
 	    return -54;
 	}
-    LOG("len is %u\n",len);
+    if (log_1) LOG("len is %u\n",len);
     while(len > 0)
     {
 	t16 = (t_uint16 *)pos;		htype = ntohs(*t16);
@@ -253,15 +253,15 @@ int parse_body_binding_request(char *pos,unsigned int len,t_stun_message *msg)
 	//we have at least len octets
 	if (len-hl < hlen)
 	    {
-		LOG("parse_body:body to small for attribute len=%u h->len=%u\n",len,hlen);
+		if (log_1) LOG("parse_body:body to small for attribute len=%u h->len=%u\n",len,hlen);
 		return -55;
 	    }
 	if ((hlen%4 != 0)||(hlen == 0))
 	    {
-		LOG("parse_body:header has a length not modulo or is 0 %d\n",hlen);
+		if (log_1) LOG("parse_body:header has a length not modulo or is 0 %d\n",hlen);
 		return -56;
 	    }
-	LOG("parse_body:received an attr %x with len %d\n",htype,hlen);
+	if (log_1) LOG("parse_body:received an attr %x with len %d\n",htype,hlen);
 	
 	switch(htype)
 	{
@@ -269,7 +269,7 @@ int parse_body_binding_request(char *pos,unsigned int len,t_stun_message *msg)
 		{
 		    if (hlen != STUN_ADDRESS_LEN)
 			{
-			    LOG("pbr:difference in len.response address\n");
+			    if (log_1) LOG("pbr:difference in len.response address\n");
 			    return -51;
 			}
 		    if ((ret = parse_stun_address(pos,len,&req->response_address))<0) return -52;//we shall respond with a 400
@@ -285,7 +285,7 @@ int parse_body_binding_request(char *pos,unsigned int len,t_stun_message *msg)
 		{
 		    if (hlen != STUN_CHANGE_REQUEST_LEN)
 			{
-			    LOG("pbr:difference in len.cr\n");
+			    if (log_1) LOG("pbr:difference in len.cr\n");
 			    return -61;
 			}	
 		    if ((ret = parse_stun_change_request(pos,len,&req->change_request)) < 0) return -62;
@@ -296,7 +296,7 @@ int parse_body_binding_request(char *pos,unsigned int len,t_stun_message *msg)
 		{
 		    if (hlen > MAX_STRING_LEN)
 			{
-			    LOG("pbr:username to long > 256.username\n");
+			    if (log_1) LOG("pbr:username to long > 256.username\n");
 			    return -71;
 			}
 		    if ((ret = parse_stun_username(pos,len,&req->username)) < 0) return -72;
@@ -307,7 +307,7 @@ int parse_body_binding_request(char *pos,unsigned int len,t_stun_message *msg)
 		{
 		    if (hlen != STUN_MESSAGE_INTEGRITY_LEN)
 			{
-			    LOG("pbr:difference in len.message integrity\n");
+			    if (log_1) LOG("pbr:difference in len.message integrity\n");
 			    return -81;
 			}
 		    if ((ret = parse_stun_message_integrity(pos,len,&req->message_integrity)) < 0) return -82;
@@ -315,7 +315,7 @@ int parse_body_binding_request(char *pos,unsigned int len,t_stun_message *msg)
 		    //------------------------------------------
 		    if (len - ret != 0)
 			{
-			    LOG("pbr:message integrity is not last\n");
+			    if (log_1) LOG("pbr:message integrity is not last\n");
 			    //we shall return a 400 error
 			    return -83;
 			}
@@ -366,7 +366,7 @@ int parse_body_binding_request(char *pos,unsigned int len,t_stun_message *msg)
 		{	
 		    if (htype <= MANDATORY_LIMIT)
 		    {
-			LOG("parse_body:unknown attribute\n");
+			if (log_1) LOG("parse_body:unknown attribute\n");
 			//TODO:sending error message because we do not understand it and is mandatory
 			//-----------------------------------
 			
@@ -394,7 +394,7 @@ int parse_body_binding_request(char *pos,unsigned int len,t_stun_message *msg)
 	    total_parsed += ret;
 	    pos += ret;
 	    len -= ret;
-	    LOG("len becomes %u\n",len);
+	    if (log_1) LOG("len becomes %u\n",len);
     }
     return total_parsed;
 }
@@ -411,7 +411,7 @@ int parse_body_binding_response(char *pos,unsigned int len,t_stun_message *msg)
     resp = &msg->u.resp;
     if (len < hl)
 	{
-	    LOG("parse_body_resp:body to small\n");
+	    if (log_1) LOG("parse_body_resp:body to small\n");
 	    return -51;
 	}
         
@@ -423,15 +423,15 @@ int parse_body_binding_response(char *pos,unsigned int len,t_stun_message *msg)
 	ret = 0;
 	if (len < hlen)
 	    {
-		LOG("parse_body_response:body to small for attribute len=%u h->len=%u\n",len,hlen);
+		if (log_1) LOG("parse_body_response:body to small for attribute len=%u h->len=%u\n",len,hlen);
 		return -52;
 	    }
 	if ((hlen%4 != 0)||(hlen == 0))
 	    {
-		LOG("parse_body_response:header has a length not modulo 4 or is 0\n");
+		if (log_1) LOG("parse_body_response:header has a length not modulo 4 or is 0\n");
 		return -53;
 	    }
-	LOG("parse_body_response:received an attr %x with len %d\n",htype,hlen);
+	if (log_1) LOG("parse_body_response:received an attr %x with len %d\n",htype,hlen);
 	
         //this are the attributes types acceptable in binding response
 	switch(htype)
@@ -440,7 +440,7 @@ int parse_body_binding_response(char *pos,unsigned int len,t_stun_message *msg)
 		{
 		    if (hlen != STUN_ADDRESS_LEN)
 			{
-			    LOG("pbresp:difference in len.mapped address\n");
+			    if (log_1) LOG("pbresp:difference in len.mapped address\n");
 			    return -54;
 			}
 		    if ((ret = parse_stun_address(pos,len,&resp->mapped_address))<0) return -55;
@@ -452,7 +452,7 @@ int parse_body_binding_response(char *pos,unsigned int len,t_stun_message *msg)
 		{
 		    if (hlen != STUN_ADDRESS_LEN)
 			{
-			    LOG("pbresp:difference in len.source address\n");
+			    if (log_1) LOG("pbresp:difference in len.source address\n");
 			    return -56;
 			}
 		    if ((ret = parse_stun_address(pos,len,&resp->source_address))<0) return -57;
@@ -464,7 +464,7 @@ int parse_body_binding_response(char *pos,unsigned int len,t_stun_message *msg)
 		{
 		    if (hlen != STUN_ADDRESS_LEN)
 			{
-			    LOG("pbresp:difference in len.changed address\n");
+			    if (log_1) LOG("pbresp:difference in len.changed address\n");
 			    return -58;
 			}
 		    if ((ret = parse_stun_address(pos,len,&resp->changed_address))<0) return -59;
@@ -475,7 +475,7 @@ int parse_body_binding_response(char *pos,unsigned int len,t_stun_message *msg)
 		{
 		    if (hlen != STUN_ADDRESS_LEN)
 			{
-			    LOG("pbresp:difference in len.reflected from\n");
+			    if (log_1) LOG("pbresp:difference in len.reflected from\n");
 			    return -60;
 			}
 		    if ((ret = parse_stun_address(pos,len,&resp->reflected_from))<0) return -61;
@@ -488,13 +488,13 @@ int parse_body_binding_response(char *pos,unsigned int len,t_stun_message *msg)
 		{
 		    if (hlen != STUN_MESSAGE_INTEGRITY_LEN)
 			{
-			    LOG("pbresp:difference in len.message integrity\n");
+			    if (log_1) LOG("pbresp:difference in len.message integrity\n");
 			}
 		    if ((ret = parse_stun_message_integrity(pos,len,&resp->message_integrity)) < 0) return -62;
                     //check if this attributte is the last
 		    if (len - ret != 0)
 			{
-			    LOG("pbresp:message integrity is not last\n");
+			    if (log_1) LOG("pbresp:message integrity is not last\n");
 			    //TODO:error message or ignore?
 			    return -63;
 			}
@@ -508,7 +508,7 @@ int parse_body_binding_response(char *pos,unsigned int len,t_stun_message *msg)
 		    if (htype <=  MANDATORY_LIMIT)
 		    {
 			//client code
-			LOG("parse_body:unknown attribute\n");
+			if (log_1) LOG("parse_body:unknown attribute\n");
 			return -3;
 		    }
 		    
@@ -526,9 +526,9 @@ int parse_body_binding_response(char *pos,unsigned int len,t_stun_message *msg)
 	    total_parsed += ret;
 	    pos += ret;
 	    len -= ret;
-	    //LOG("len becomes %u\n",len);
+	    //if (log_1) LOG("len becomes %u\n",len);
     }
-    LOG("NOTICE:parse_body_stun_response returned ok\n");
+    if (log_1) LOG("NOTICE:parse_body_stun_response returned ok\n");
     return total_parsed;
     
 }
@@ -543,7 +543,7 @@ int parse_body_binding_error_response(char *pos,unsigned int len,t_stun_message 
     resp = &msg->u.err_resp;
     if (len < hl)
 	{
-	    LOG("parse_body_binding_error_response:body to small\n");
+	    if (log_1) LOG("parse_body_binding_error_response:body to small\n");
 	    return -1;
 	}
     while(len > 0)
@@ -555,15 +555,15 @@ int parse_body_binding_error_response(char *pos,unsigned int len,t_stun_message 
 	ret = 0;
 	if (len < hlen)
 	    {
-		LOG("parse_body_binding_error_response:body to small for attribute len=%u h->len=%u\n",len,hlen);
+		if (log_1) LOG("parse_body_binding_error_response:body to small for attribute len=%u h->len=%u\n",len,hlen);
 		return -2;
 	    }
 	if ((hlen%4 != 0)||(hlen == 0))
 	    {
-		LOG("parse_body_binding_error_response:header has a length not modulo 4 or is 0\n");
+		if (log_1) LOG("parse_body_binding_error_response:header has a length not modulo 4 or is 0\n");
 		return -3;
 	    }
-	LOG("parse_body_binding_error_response:received an attr %x with len %d\n",htype,hlen);
+	if (log_1) LOG("parse_body_binding_error_response:received an attr %x with len %d\n",htype,hlen);
 	
 	switch(htype)
 	{
@@ -571,7 +571,7 @@ int parse_body_binding_error_response(char *pos,unsigned int len,t_stun_message 
 		{
 		    if (hlen < 8)
 			{
-			    LOG("pberrresp:difference in len.error code\n");
+			    if (log_1) LOG("pberrresp:difference in len.error code\n");
 			    return -4;
 			}
 		    if ((ret = parse_stun_error_code(pos,len,&resp->error_code))<0) return -5;
@@ -582,7 +582,7 @@ int parse_body_binding_error_response(char *pos,unsigned int len,t_stun_message 
 		{
 		    if (hlen % 4 != 0 )
 			{
-			    LOG("pbresp:difference in %%.unknown attributes\n");
+			    if (log_1) LOG("pbresp:difference in %%.unknown attributes\n");
 			    return -6;
 			}
 		    if ((ret = parse_stun_unknown_attributes(pos,len,&resp->unknown_attributes))<0) return -7;
@@ -594,7 +594,7 @@ int parse_body_binding_error_response(char *pos,unsigned int len,t_stun_message 
 		{	
 		    if (htype <=  MANDATORY_LIMIT)
 		    {
-			LOG("parse_body_banding_error_response:unknown attribute\n");
+			if (log_1) LOG("parse_body_banding_error_response:unknown attribute\n");
 			return -3;
 		    }
 		    
@@ -636,7 +636,7 @@ int parse_body_shared_secret_response(char *pos,unsigned int len,t_stun_message 
     resp = &msg->u.shared_resp;
     if (len < hl)
 	{
-	    LOG("parse_body_binding_error_response:body to small\n");
+	    if (log_1) LOG("parse_body_binding_error_response:body to small\n");
 	    return -1;
 	}
     while(len > 0)
@@ -646,15 +646,15 @@ int parse_body_shared_secret_response(char *pos,unsigned int len,t_stun_message 
 	ret = 0;
 	if (len < hlen)
 	    {
-		LOG("parse_body_binding_error_response:body to small for attribute len=%u h->len=%u\n",len,hlen);
+		if (log_1) LOG("parse_body_binding_error_response:body to small for attribute len=%u h->len=%u\n",len,hlen);
 		return -2;
 	    }
 	if ((hlen%4 != 0)||(hlen == 0))
 	    {
-		LOG("parse_body_binding_error_response:header has a length not modulo 4 or is 0\n");
+		if (log_1) LOG("parse_body_binding_error_response:header has a length not modulo 4 or is 0\n");
 		return -3;
 	    }
-	LOG("parse_body_binding_error_response:received an attr %x with len %d\n",htype,hlen);
+	if (log_1) LOG("parse_body_binding_error_response:received an attr %x with len %d\n",htype,hlen);
 	
 	switch(htype)
 	{
@@ -662,7 +662,7 @@ int parse_body_shared_secret_response(char *pos,unsigned int len,t_stun_message 
 		{
 		    if (hlen != USERNAME_PREFIX_LEN+8 )
 			{
-			    LOG("pberrresp:difference in len.username\n");
+			    if (log_1) LOG("pberrresp:difference in len.username\n");
 			    return -4;
 			}
 		    if ((ret = parse_stun_username(pos,len,&resp->username))<0) return -5;
@@ -673,7 +673,7 @@ int parse_body_shared_secret_response(char *pos,unsigned int len,t_stun_message 
 		{
 		    if (hlen != STUN_MESSAGE_INTEGRITY_LEN )
 			{
-			    LOG("pbresp:difference in len.password\n");
+			    if (log_1) LOG("pbresp:difference in len.password\n");
 			    return -6;
 			}
 
@@ -686,7 +686,7 @@ int parse_body_shared_secret_response(char *pos,unsigned int len,t_stun_message 
 		{	
 		    if (htype <=  MANDATORY_LIMIT)
 		    {
-			LOG("parse_body_banding_error_response:unknown attribute\n");
+			if (log_1) LOG("parse_body_banding_error_response:unknown attribute\n");
 			return -8;
 		    }
 		    
@@ -721,10 +721,10 @@ int parse_body_shared_secret_error_response(char *pos,unsigned int len,t_stun_me
     resp = &msg->u.shared_err_resp;
     if (len < hl)
 	{
-	    LOG("parse_body_binding_error_response:body to small\n");
+	    if (log_1) LOG("parse_body_binding_error_response:body to small\n");
 	    return -1;
 	}
-    //LOG("len is %u\n",len);
+    //if (log_1) LOG("len is %u\n",len);
     while(len > 0)
     {
 	//advance(msg,hl);
@@ -733,15 +733,15 @@ int parse_body_shared_secret_error_response(char *pos,unsigned int len,t_stun_me
 	ret = 0;
 	if (len < hlen)
 	    {
-		LOG("parse_body_binding_error_response:body to small for attribute len=%u h->len=%u\n",len,hlen);
+		if (log_1) LOG("parse_body_binding_error_response:body to small for attribute len=%u h->len=%u\n",len,hlen);
 		return -2;
 	    }
 	if ((hlen%4 != 0)||(hlen == 0))
 	    {
-		LOG("parse_body_binding_error_response:header has a length not modulo 4 or is 0\n");
+		if (log_1) LOG("parse_body_binding_error_response:header has a length not modulo 4 or is 0\n");
 		return -3;
 	    }
-	LOG("parse_body_binding_error_response:received an attr %x with len %d\n",htype,hlen);
+	if (log_1) LOG("parse_body_binding_error_response:received an attr %x with len %d\n",htype,hlen);
 	
 	switch(htype)
 	{
@@ -751,7 +751,7 @@ int parse_body_shared_secret_error_response(char *pos,unsigned int len,t_stun_me
 		{
 		    if (hlen < 8)
 			{
-			    LOG("pberrresp:difference in len.error code\n");
+			    if (log_1) LOG("pberrresp:difference in len.error code\n");
 			    return -4;
 			}
 		    if ((ret = parse_stun_error_code(pos,len,&resp->error_code))<0) return -5;
@@ -762,7 +762,7 @@ int parse_body_shared_secret_error_response(char *pos,unsigned int len,t_stun_me
 		{
 		    if (hlen % 4 != 0 )
 			{
-			    LOG("pbresp:difference in %%.unknown attributes\n");
+			    if (log_1) LOG("pbresp:difference in %%.unknown attributes\n");
 			    return -6;
 			}
 		    if ((ret = parse_stun_unknown_attributes(pos,len,&resp->unknown_attributes))<0) return -7;
@@ -774,7 +774,7 @@ int parse_body_shared_secret_error_response(char *pos,unsigned int len,t_stun_me
 		{	
 		    if (htype <=  MANDATORY_LIMIT)
 		    {
-			LOG("parse_body_banding_error_response:unknown attribute\n");
+			if (log_1) LOG("parse_body_banding_error_response:unknown attribute\n");
 			return -8;
 		    }
 		    
@@ -792,7 +792,7 @@ int parse_body_shared_secret_error_response(char *pos,unsigned int len,t_stun_me
 	    total_parsed += ret;
 	    pos += ret;
 	    len -= ret;
-	    //LOG("len becomes %u\n",len);
+	    //if (log_1) LOG("len becomes %u\n",len);
     }
     return total_parsed;
 }
@@ -808,16 +808,16 @@ int parse_msg(int is_server,char *pos,unsigned int len,t_stun_message *msg)
     
     t_stun_message n;
     adv = create_stun_binding_error_response(6,0,"SERVER Down",11,&n);
-    LOG("c=%d\n",adv);
+    if (log_1) LOG("c=%d\n",adv);
     u = CHANGE_REQUEST;
     adv = create_stun_unknown_attributes(&u,1,&ua);
     n.u.err_resp.unknown_attributes = ua;
     n.u.err_resp.is_unknown_attributes = 1;
-    LOG("a=%d\n",adv);
+    if (log_1) LOG("a=%d\n",adv);
     adv = format_stun_binding_error_response(&n);
-    LOG("f=%d\n",adv);
+    if (log_1) LOG("f=%d\n",adv);
     adv = udp_send(bind_address,(char *)n.buff,n.buff_len,&(msg->src));
-    LOG("u=%d\n",adv);
+    if (log_1) LOG("u=%d\n",adv);
     fflush(stdout);
 */
     

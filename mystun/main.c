@@ -46,6 +46,9 @@
 #include "tls_server.h"
 #include "shm.h"
 
+//extern int log;
+
+int log_1 = 1;
 struct socket_info sock_info[MAX_LISTEN];
 int sock_no = 0;
 //number of children to fork.unused
@@ -569,15 +572,15 @@ int main(int argc,char **argv)
                   
 			case '?':
 					if (isprint(optopt))
-						fprintf(stderr, "Unknown option `-%c.\n", optopt);
+						fprintf(stderr, "Unknown option `-%c´.\n", optopt);
 					else
 						fprintf(stderr, 
-								"Unknown option character `\\x%x.\n",
+								"Unknown option character `\\x%x´.\n",
 								optopt);
 					goto error;
 			case ':':
 					fprintf(stderr, 
-								"Option `-%c requires an argument.\n",
+								"Option `-%c´ requires an argument.\n",
 								optopt);
 					goto error;
 			default:

@@ -1,5 +1,4 @@
 /*
- *
  * Copyright (C) 2001-2003 iptel.org/FhG
  *
  * This file is part of ser, a free SIP server.

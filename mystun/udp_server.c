@@ -38,6 +38,7 @@
 #include <winsock2.h>
 #include <stdlib.h>
 #include <io.h>
+#include "utils.h"
 #endif
 
 
@@ -75,12 +76,12 @@ int probe_max_receive_buffer( int udp_sock )
 	ioptvallen=sizeof(ioptval);
 	if (getsockopt( udp_sock, SOL_SOCKET, SO_RCVBUF, (void*) &ioptval,&ioptvallen) == -1 )
 	{
-		LOG("ERROR: udp_init: getsockopt: %s\n", strerror(errno));
+		if (log_1) LOG("ERROR: udp_init: getsockopt: %s\n", strerror(errno));
 		return -1;
 	}
 	if ( ioptval==0 ) 
 	{
-		LOG("DEBUG: udp_init: SO_RCVBUF initialy set to 0; resetting to %d\n",BUFFER_INCREMENT );
+		if (log_1) LOG("DEBUG: udp_init: SO_RCVBUF initialy set to 0; resetting to %d\n",BUFFER_INCREMENT );
 		ioptval=BUFFER_INCREMENT;
 	} else 
 	    //LOGL(L_INFO, "INFO: udp_init: SO_RCVBUF is initially %d\n", ioptval );
@@ -110,7 +111,7 @@ int probe_max_receive_buffer( int udp_sock )
 		if (getsockopt( udp_sock, SOL_SOCKET, SO_RCVBUF, (void*) &voptval,
 		    &voptvallen) == -1 )
 		{
-			LOG("ERROR: udp_init: getsockopt: %s\n", strerror(errno));
+			if (log_1) LOG("ERROR: udp_init: getsockopt: %s\n", strerror(errno));
 			return -1;
 		} else {
 			//LOGL(L_DBG, "DEBUG: setting SO_RCVBUF; set=%d,verify=%d\n", optval, voptval);
@@ -144,8 +145,14 @@ int udp_init(struct socket_info* sock_info)
 {
 	union sockaddr_union* addr;
 	int optval;
+//#ifdef WIN32
+	struct sockaddr_in sa;
+	int sa_len;
+//#endif
+    
 
-	//LOG("sizeof = %d\n",sizeof(t_stun_shared_req));
+
+	//if (log_1) LOG("sizeof = %d\n",sizeof(t_stun_shared_req));
 	addr=&sock_info->su;
 /*
 	addr=(union sockaddr_union*)pkg_malloc(sizeof(union sockaddr_union));
@@ -156,20 +163,20 @@ int udp_init(struct socket_info* sock_info)
 */
 	sock_info->proto=PROTO_UDP;
 	if (init_su(addr, &sock_info->address, sock_info->port_no)<0){
-		LOG("ERROR: udp_init: could not init sockaddr_union\n");
+		if (log_1) LOG("ERROR: udp_init: could not init sockaddr_union\n");
 		goto error;
 	}
 	
 	sock_info->socket = socket(AF2PF(addr->s.sa_family), SOCK_DGRAM, 0);
 	if (sock_info->socket==-1){
-		LOG("ERROR: udp_init: socket: %s\n", strerror(errno));
+		if (log_1) LOG("ERROR: udp_init: socket: %s\n", strerror(errno));
 		goto error;
 	}
 	/* set sock opts? */
 	optval=1;
 	if (setsockopt(sock_info->socket, SOL_SOCKET, SO_REUSEADDR ,
 					(void*)&optval, sizeof(optval)) ==-1){
-		LOG("ERROR: udp_init: setsockopt: %s\n", strerror(errno));
+		if (log_1) LOG("ERROR: udp_init: setsockopt: %s\n", strerror(errno));
 		goto error;
 	}
 	/* tos */
@@ -177,7 +184,7 @@ int udp_init(struct socket_info* sock_info)
 	optval=IPTOS_LOWDELAY;
 	if (setsockopt(sock_info->socket, IPPROTO_IP, IP_TOS, (void*)&optval,sizeof(optval)) ==-1)
 	{
-		LOG("WARNING: udp_init: setsockopt tos: %s\n", strerror(errno));
+		if (log_1) LOG("WARNING: udp_init: setsockopt tos: %s\n", strerror(errno));
 		/* continue since this is not critical */
 	}
 #endif
@@ -186,7 +193,7 @@ int udp_init(struct socket_info* sock_info)
 	/* enable error receiving on unconnected sockets */
 	if(setsockopt(sock_info->socket, SOL_IP, IP_RECVERR,
 					(void*)&optval, sizeof(optval)) ==-1){
-		LOG("ERROR: udp_init: setsockopt: %s\n", strerror(errno));
+		if (log_1) LOG("ERROR: udp_init: setsockopt: %s\n", strerror(errno));
 		goto error;
 	}
 #endif
@@ -195,7 +202,7 @@ int udp_init(struct socket_info* sock_info)
 	if ( probe_max_receive_buffer(sock_info->socket)==-1) goto error;
 	
 	if (bind(sock_info->socket,  &addr->s, sockaddru_len(*addr))==-1){
-		LOG("ERROR: udp_init: bind(%x, %p, %d) on %s: %s\n",
+		if (log_1) LOG("ERROR: udp_init: bind(%x, %p, %d) on %s: %s\n",
 				sock_info->socket, &addr->s, 
 				sockaddru_len(*addr),
 				sock_info->address_str.s,
@@ -203,13 +210,36 @@ int udp_init(struct socket_info* sock_info)
 		goto error;
 	}
 
+//#ifdef WIN32
+	sa_len = sizeof(struct sockaddr_in);
+	if (getsockname(sock_info->socket, (struct sockaddr *)&sa, &sa_len) == -1)
+	{
+		if (log_1) LOG("ERROR:getsockname failed\n");
+#ifdef WIN32		
+		if (WSAGetLastError() != 0)
+		{
+			if (log_1) 
+			{
+				LOG("getsockname error.code is %d:",WSAGetLastError());
+				DisplayErrorText(WSAGetLastError());
+				LOG("\n");
+			}
+			return 21;
+		}
+#endif		
+	}
+	if (log_1) LOG("Sending FROM: %s:%d\n", inet_ntoa(sa.sin_addr),ntohs(sa.sin_port));
+        if (sock_info->port_no != ntohs(sa.sin_port)) /* perhaps we wanted an ephemeral port ? */
+		sock_info->port_no = ntohs(sa.sin_port);
+
+//#endif
 /*	pkg_free(addr);*/
-	LOG("NOTICE:udp init succeded %d\n",sock_info->socket);
+	if (log_1) LOG("NOTICE:udp init succeded %d\n",sock_info->socket);
 	return 0;
 	
 error:
 /*	if (addr) pkg_free(addr);*/
-	LOG("ERROR:udp init failed\n");
+	if (log_1) LOG("ERROR:udp init failed\n");
 	return -1;
 }
 
@@ -247,11 +277,11 @@ int udp_rcv_loop()
 #ifdef DYN_BUF
 		buf=malloc(BUF_SIZE+1);
 		if (buf==0){
-			LOG("ERROR: udp_rcv_loop: could not allocate receive buffer\n");
+			if (log_1) LOG("ERROR: udp_rcv_loop: could not allocate receive buffer\n");
 			goto error;
 		}
 #endif
-		LOG("udp_rcv_loop:%d\n",getpid());
+		if (log_1) LOG("udp_rcv_loop:%d\n",getpid());
 		fromlen=sockaddru_len(bind_address->su);
 		//---------AICI ASTEPT DOAR PE O ADRESA, iar eu trebuie sa astept pe 4
 		//2 solutii,select sau fork
@@ -259,7 +289,7 @@ int udp_rcv_loop()
 		
 		if (len==-1)
 		{
-			LOG("ERROR: udp_rcv_loop:recvfrom:[%d] %s\n",errno, strerror(errno));
+			if (log_1) LOG("ERROR: udp_rcv_loop:recvfrom:[%d] %s\n",errno, strerror(errno));
 			if ((errno==EINTR)||(errno==EAGAIN)||(errno==EWOULDBLOCK)||(errno==ECONNREFUSED))
 				continue; /* goto skip;*/
 			else goto error;
@@ -303,13 +333,13 @@ int udp_send(struct socket_info *source, char *buf, unsigned len,union sockaddr_
 	tolen=sockaddru_len(*to);
 again:
 	n=sendto(source->socket, buf, len, 0, &to->s, tolen);
-	LOG("INFO: send status: %d\n", n);
+	if (log_1) LOG("INFO: send status: %d\n", n);
 	if (n==-1){
-		LOG("ERROR: udp_send: sendto(%d,%p,%d,%x,): %s(%d)\n",source->socket,buf,len,to->s.sa_data,strerror(errno),errno);
+		if (log_1) LOG("ERROR: udp_send: sendto(%d,%p,%d,%x,): %s(%d)\n",source->socket,buf,len,to->s.sa_data,strerror(errno),errno);
 		if (errno==EINTR) goto again;
 		if (errno==EINVAL) 
                 {
-			LOG("CRITICAL: invalid sendtoparameters\n"
+			if (log_1) LOG("CRITICAL: invalid sendtoparameters\n"
 			"one possible reason is the server is bound to localhost and\n"
 			"attempts to send to the net\n");
 		}
@@ -329,10 +359,10 @@ int receive_msg_over_udp(char* buf, unsigned int len, struct receive_info* ri)
     int 			adv;
 
 #ifndef WIN32    
-    LOG("receive_msg_over_udp:message received on pid:%d from ",getpid());
+    if (log_1) LOG("receive_msg_over_udp:message received on pid:%d from ",getpid());
 #endif
     print_ip(&ri->src_ip);
-    LOG(":%u\n",ri->src_port);
+    if (log_1) LOG(":%u\n",ri->src_port);
     memset(&msg,0,sizeof(t_stun_message));
     msg.buff_len = len;
     msg.pos = NULL;
@@ -341,31 +371,31 @@ int receive_msg_over_udp(char* buf, unsigned int len, struct receive_info* ri)
     msg.original_src = ri->src_su;
     msg.dst = bind_address->su;//bind_address
     if (len%4!=0)
-	LOG("Message length is not modulo 4!!!!!\n");
+	if (log_1) LOG("Message length is not modulo 4!!!!!\n");
     //TODO:we should have error classes to distinguish between servers fault and message fault
     if ((ret=parse_msg(SERVER,buf,len,&msg)) < 0)
     {
-	LOG("receive_msg_over_udp:error parsing message\n");
+	if (log_1) LOG("receive_msg_over_udp:error parsing message\n");
 	
 	if (ret < -100) //internal error class
 	    {
 	    	adv = create_stun_binding_error_response(5,0,STUN_ERROR_500_REASON,STUN_ERROR_500_REASON_LEN,&msg,&n);
-		adv = send_msg_over_udp(bind_address,&n,&(msg.original_src));
-		return -1;
+			adv = send_msg_over_udp(bind_address,&n,&(msg.original_src));
+			return -1;
 	    }
 	if (ret < -50)	//malformed message for which we did not respond
 	    {
-		adv = create_stun_binding_error_response(4,0,STUN_ERROR_400_REASON,STUN_ERROR_400_REASON_LEN,&msg,&n);
-		adv = send_msg_over_udp(bind_address,&n,&(msg.original_src));
-		return -2;
+			adv = create_stun_binding_error_response(4,0,STUN_ERROR_400_REASON,STUN_ERROR_400_REASON_LEN,&msg,&n);
+			adv = send_msg_over_udp(bind_address,&n,&(msg.original_src));
+			return -2;
 	    }
 	return -3;
     }
     //now we have a parsed message, we respond
     if ((ret = respond_to_msg(&msg)) < 0)
     {
-	LOG("receive_msg_over_udp:error responding to message\n");
-	return -4;
+		if (log_1) LOG("receive_msg_over_udp:error responding to message\n");
+		return -4;
     }
     
     return 1;
@@ -401,7 +431,7 @@ int send_msg_over_udp(struct socket_info *source,t_stun_message *msg,union socka
     if (ret < 0) return -2;
     if (udp_send(source,(char *)msg->buff,msg->buff_len,dest) < 0)
     {
-	LOG("send_msg_over_udp:failed to send message\n");
+	if (log_1) LOG("send_msg_over_udp:failed to send message\n");
 	return -3;
     }
     return 1;
