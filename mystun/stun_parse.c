@@ -1,5 +1,5 @@
 /*
- * $Id: stun_parse.c,v 1.2 2003/12/13 20:59:19 jiri Exp $
+ * $Id: stun_parse.c,v 1.3 2003/12/16 10:01:08 gabriel Exp $
  *
  * Copyright (C) 2001-2003 iptel.org/FhG
  *
@@ -25,6 +25,7 @@
  * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
  *
  */
+
 #include <unistd.h>
 #include <string.h>
 
@@ -136,22 +137,33 @@ int parse_stun_address(char *pos,unsigned int len,void *address)
     struct mapped_address *a;
     t_uint16	*port,*t16;
     t_uint32	*ip;
-    if (len < STUN_ADDRESS_LEN) return -1;
     
+    if (len < STUN_ADDRESS_LEN) 
+    {
+	LOG("ERROR:Remaining len is smaller than an address %d\n",len);
+	return -1;
+    }
     a = (struct mapped_address *)address;
     
     t16 = (t_uint16 *)pos;	a->header.type = ntohs(*t16);
     t16 = (t_uint16 *)(pos+2);	a->header.len = ntohs(*t16);    
     
-    a->unused = (t_uint8)*pos;
+    /* BUG we did not have the +4 */
+    pos = pos + 4;/* jump over header */
+    a->unused = (t_uint8)*(pos);
     a->family = (t_uint8)*(pos+1);
-    if (a->family != IPv4FAMILY) return -2;
+    if ((a->family) != IPv4FAMILY) 
+    {
+	LOG("ERROR:family is not IPv4 %x\n",(a->family));
+	return -2;
+    }
     port = (t_uint16 *)(pos+2);
     a->port = ntohs(*port);
     ip = (t_uint32 *)(pos+4);
     a->address = ntohl(*ip);
-    LOG("parse_stun_address:received family %u,port %u,ip %lu\n",a->family,ntohs(a->port),ntohl(a->address));
     
+    LOG("parse_stun_address:received family %u,port %u,ip %lu\n",a->family,ntohs(a->port),a->address); 
+   
     return STUN_ATTR_HEADER_LEN+STUN_ADDRESS_LEN;
 }
 
@@ -164,6 +176,7 @@ int parse_stun_error_code(char *pos,unsigned int len,t_stun_error_code *error)
     
     if (error->header.len < 4) return -1;
     
+    pos = pos + 4;    
     t16 = (t_uint16 *)pos;
     error->unused = ntohs(*t16);
     if (error->unused != 0)
@@ -516,6 +529,7 @@ int parse_body_binding_response(char *pos,unsigned int len,t_stun_message *msg)
 	    len -= ret;
 	    //LOG("len becomes %u\n",len);
     }
+    LOG("NOTICE:parse_body_stun_response returned ok\n");
     return total_parsed;
     
 }
