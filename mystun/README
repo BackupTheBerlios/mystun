@@ -1,249 +1,28 @@
-<!doctype html public "-//W3C//DTD HTML 4.0 Transitional//EN"
-"http://www.w3.org/TR/REC-html40/loose.dtd">
-<html><head>
-<!-- ViewCVS -- http://viewcvs.sourceforge.net/
-by Greg Stein -- mailto:gstein@lyra.org
--->
-<title>CVS log for mystun/mystun/mystun/README</title>
-<link rel="stylesheet" href="/style.php" type="text/css">
-</head>
-<body text="#000000" bgcolor="#ffffff">
-<!-- top strip -->
-<table width="100%" border=0 cellspacing=0 cellpadding=2>
-<tr bgcolor="#7b7b7b">
-<td><span class=maintitlebar>&nbsp
-<b><a href="http://www.berlios.de/" class="maintitlebar">Home</a></b> |
-<b><a href="http://www.berlios.de/about/" class="maintitlebar">About us</a></b> |
-<b><a href="http://www.berlios.de/partners/" class="maintitlebar">Partners</a></b> |
-<b><a href="http://www.berlios.de/contact/" class="maintitlebar">Contact</a></b>
-</span>
-</td>
-</tr>
-</table>
-<!-- end top strip -->
-<!-- top title table -->
-<table width="100%" border=0 cellspacing=0 cellpadding=0 bgcolor="" valign="middle">
-<tr valign="top" bgcolor="#ffcc33">
-<td bgcolor="#ffffff"><a href="http://www.berlios.de/"><img src="/images/berliOS_logo.png" hspace=5 vspace=5 border=0 width="238" height="61"></a></td>
-<td WIDTH="10" BGCOLOR="#ffcc33"><img SRC="/images/blank.gif" BORDER=0 height=1 width=10></td>
-<td width="99%" valign="middle"><b><font size=+1>&nbsp;CVS Repository</font></b></td>
-<td valign=middle>
-<a href="http://www.fokus.fhg.de/"><img src="/images/logo_fokus.png" align="right" alt="FOKUS" hspace="10" border=0 width="60" height="60"></a>
-</td>
-</tr>
-<tr><td bgcolor="#7b7b7b" colspan=4><img src="/images/blank.gif" height=2 vspace=0></td></tr>
-</table>
-<!-- end top title table -->
-<table width="100%" border=0 cellspacing=0 cellpadding=4>
-<tr>
-<td><b>CVS log for mystun/mystun/mystun/README</b></td>
-<td align=right><a target="_blank"
-href="/cgi-bin/viewcvs.cgi/*docroot*/help_log.html">Help</a></td>
-</tr>
-</table>
-<a href="/cgi-bin/viewcvs.cgi/mystun/mystun/mystun/?only_with_tag=MAIN#README"><img src="/icons/small/back.gif" alt="(back)" border=0
-width=16 height=16></a>
-<b>Up to <a href="/cgi-bin/viewcvs.cgi/?only_with_tag=MAIN#dirlist">[Development]</a> / <a href="/cgi-bin/viewcvs.cgi/mystun/?only_with_tag=MAIN#dirlist">mystun</a> / <a href="/cgi-bin/viewcvs.cgi/mystun/mystun/?only_with_tag=MAIN#dirlist">mystun</a> / <a href="/cgi-bin/viewcvs.cgi/mystun/mystun/mystun/?only_with_tag=MAIN#dirlist">mystun</a></b><p>
-<a href="#diff">Request diff between arbitrary revisions</a>
-
-/ <a href="README?graph=1&only_with_tag=MAIN">Display revisions graphically</a>
-
-<hr noshade>
-
-Default branch: MAIN
-<br>
-Bookmark a link to:
-
-<a href="README?rev=HEAD&only_with_tag=MAIN&content-type=text/vnd.viewcvs-markup"><b>HEAD</b></a>
-/
-(<a href="/cgi-bin/viewcvs.cgi/*checkout*/mystun/mystun/mystun/README?rev=HEAD&only_with_tag=MAIN&content-type=text/plain" target="cvs_checkout"
-onClick="window.open('about:blank', 'cvs_checkout',
-'resizeable=1,scrollbars=1')"
-><b>download</b></a>)
-
-
-<br>
-
-Current tag: MAIN <br>
-
-
-<hr size=1 noshade>
-
-<a name="rev1.1.1.1"></a>
-<a name="HEAD"></a>
-
-<a name="MAIN"></a>
-
-Revision
-
-<a href="/cgi-bin/viewcvs.cgi/*checkout*/mystun/mystun/mystun/README?rev=1.1.1.1&only_with_tag=MAIN" target="cvs_checkout"
-onClick="window.open('about:blank', 'cvs_checkout',
-'resizeable=1,scrollbars=1')"
-><b>1.1.1.1</b></a>
-
-
-
-
-/
-<a href="README?rev=1.1.1.1&only_with_tag=MAIN&content-type=text/vnd.viewcvs-markup"><b>(view)</b></a>
-
-
-- <a href="README?annotate=1.1.1.1&only_with_tag=MAIN">annotate</a>
-
-
-- <a href="README?r1=1.1.1.1&only_with_tag=MAIN">[select for diffs]</a>
-
-
-
-<i>(vendor branch)</i>
-
-, <i>Fri Dec 19 00:24:42 2003 UTC</i> (10 minutes, 43 seconds ago) by <i>gabriel</i>
-
-<br>Branch:
-
-<a href="README?only_with_tag=MAIN"><b>MAIN</b></a>
-
-
-
-<br>CVS Tags:
-
-<a href="README?only_with_tag=HEAD"><b>HEAD</b></a>
-
-
-
-
-
-<br>Changes since <b>1.1: +0 -0 lines</b>
-
-
-
-
-<br>Diff to <a href="README.diff?r1=1.1&r2=1.1.1.1&only_with_tag=MAIN">previous 1.1</a>
-
-
-
-
-
-
-
-<pre>Added client code
-</pre>
-
-<hr size=1 noshade>
-
-<a name="rev1.1"></a>
-
-
-Revision
-
-<a href="/cgi-bin/viewcvs.cgi/*checkout*/mystun/mystun/mystun/README?rev=1.1&only_with_tag=MAIN" target="cvs_checkout"
-onClick="window.open('about:blank', 'cvs_checkout',
-'resizeable=1,scrollbars=1')"
-><b>1.1</b></a>
-
-
-
-
-/
-<a href="README?rev=1.1&only_with_tag=MAIN&content-type=text/vnd.viewcvs-markup"><b>(view)</b></a>
-
-
-- <a href="README?annotate=1.1&only_with_tag=MAIN">annotate</a>
-
-
-- <a href="README?r1=1.1&only_with_tag=MAIN">[select for diffs]</a>
-
-
-
-, <i>Fri Dec 19 00:24:42 2003 UTC</i> (10 minutes, 43 seconds ago) by <i>gabriel</i>
-
-
-
-<br>Branch point for:
-
-<a href="README?only_with_tag=MAIN"><b>MAIN</b></a>
-
-
-
-
-
-
-
-
-
-<pre>Initial revision
-</pre>
-
-<a name=diff></a>
-<hr noshade>
-This form allows you to request diffs between any two revisions of
-a file. You may select a symbolic revision name using the selection
-box or you may type in a numeric name using the type-in text box.
-<p>
-<form method="GET" action="README.diff?only_with_tag=MAIN" name="diff_select">
-Diffs between
-<select name="r1">
-<option value="text" selected>Use Text Field</option>
-
-<option value="1.1.0.1:MAIN">MAIN</option>
-
-<option value="1.1.1.1:HEAD">HEAD</option>
-
-</select>
-<input type="TEXT" size="12" name="tr1" value="1.1"
-onChange="document.diff_select.r1.selectedIndex=0">
-and
-<select name="r2">
-<option value="text" selected>Use Text Field</option>
-
-<option value="1.1.0.1:MAIN">MAIN</option>
-
-<option value="1.1.1.1:HEAD">HEAD</option>
-
-</select>
-<input type="TEXT" size="12" name="tr2" value="1.1.1.1"
-onChange="document.diff_select.r1.selectedIndex=0">
-<br>Type of Diff should be a
-<select name="diff_format" onchange="submit()">
-<option value="h" selected>Colored Diff</option>
-<option value="l" >Long Colored Diff</option>
-<option value="u" >Unidiff</option>
-<option value="c" >Context Diff</option>
-<option value="s" >Side by Side</option>
-</select>
-<input type=submit value=" Get Diffs "></form>
-<hr noshade>
-
-<a name=branch></a>
-<form method="GET" action="README">
-
-View only Branch:
-<select name="only_with_tag" onchange="submit()">
-<option value="" >Show all branches</option>
-
-<option value="MAIN" selected>MAIN</option>
-
-</select>
-<input type=submit value=" View Branch ">
-</form>
-
-<a name=logsort></a>
-<form method="GET" action="README">
-
-Sort log by:
-<select name="logsort" onchange="submit()">
-<option value="cvs" >Not sorted</option>
-<option value="date" selected>Commit date</option>
-<option value="rev" >Revision</option>
-</select>
-<input type=submit value=" Sort ">
-</form>
-
-<hr noshade>
-<table width="100%" border=0 cellpadding=0 cellspacing=0><tr>
-<td align=left><address><a href="http://www.berlios.de/">Back to BerliOS</a></address></td>
-<td align=right>
-Powered by<br><a href="http://viewcvs.sourceforge.net/">ViewCVS 0.9.2</a>
-</td></tr></table>
-</body></html>
-
+This is iptel.org implementation of STUN (RFC3489) server.  
+
+WARNING: This project has never been polished, QA-ed,
+stress-tested, documented, and otherwise finalized. 
+Absolutely no guarantee for proper functionality, user 
+friendliness, portability, merchantability, fitness 
+for a particular purpose, performance, etc.
+
+Nevertheless, our experimental operation on a linux machine 
+with an interface with two IP addresses has been just fine.
+
+The command to compile working server on our system is:
+	gcc -o mystund *.c -lpthread
+
+Developer notes 
+---------------
+(Andrei): it uses pthread+sysv shared memory
+for some locks which is tricky. pthread semaphores are not
+guaranteed to work between processes on linux, and in this
+case the only work because they are initialized in shared
+memory.
+
+(Jiri): in PID file, ID of process is recorded which
+disappears during daemonization;
+
+(Gabriel gabriel.vasile@gmail.com): the server requires a 
+machine with two network addresses, as it has to send 
+responses from two different ip addresses
