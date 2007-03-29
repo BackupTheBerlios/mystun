@@ -31,7 +31,6 @@
 #include <unistd.h>
 #include <sys/types.h>
 #include <sys/shm.h>
-#include <semaphore.h>
 
 static int shm_id = -1;
 static char *shm_addr = (char *)-1;

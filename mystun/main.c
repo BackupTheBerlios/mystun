@@ -49,8 +49,10 @@
 //extern int log;
 
 int log_1 = 1;
+
 struct socket_info sock_info[MAX_LISTEN];
 int sock_no = 0;
+
 //number of children to fork.unused
 int children_no = 4;
 int default_port = 3478;
@@ -66,11 +68,15 @@ char *group = NULL;
 static char *compiled= __TIME__ " " __DATE__ ;
 unsigned int maxbuffer = MAX_RECV_BUFFER_SIZE;
 
+int use_interfaces = -1;
 int first_interface = -1;
 int second_interface = -1;
+char first_address[16];  /* IPv4 address */
+char second_address[16]; /* IPv4 address */
+
 
 struct socket_info *bind_address = NULL; // the main address for each of the childs
-struct socket_info *alternate_address = NULL;  
+struct socket_info *alternate_address = NULL;
 struct socket_info *bind_address_port = NULL;
 struct socket_info *alternate_address_port = NULL;
 
@@ -91,12 +97,12 @@ int is_timer = 0;
 int is_udp = 0;
 int is_tls = 0;
 char help_msg[] = "\
-my stun server --- version 0.0.1\n\
-Usage: my_stun [-p port] [-l address [-p port]...] [options]\n\
+Usage: mystun-server [OPTIONS]\n\
 Options:\n\
     -p port         Listen on the specified port (default: 3478)\n\
     -a port 	    Alternate port\n\
-    -i address      Listen on the specified interfaces(eg:1,2 or 2,3) \n\
+    -i N,M          Listen on the specified interfaces (default: 1,2)\n\
+    -I IP1,IP2      Listen on the specified IP addresses\n\
     -n processes    Number of child processes to fork \n\
                     (default: 4)(not implemented)\n\
     -u uid          Uid to drop privilegies\n\
@@ -111,7 +117,7 @@ Options:\n\
     -s		    Secure.Require only Binding Request authenticated(unused)\n\
     -E              Log to stderr\n\
     -v              Print version\n\
-    -h              Print this help message\n";
+    -h              Print this help message\n\n";
 
 
 #ifndef WIN32
@@ -122,7 +128,7 @@ int cleanup_vector()
     for(r=0;r<sock_no;r++)
         if (sock_info[r].name.s != NULL)
             free(sock_info[r].name.s);
-	    
+
     return 0;
 }
 
@@ -133,7 +139,7 @@ int cleanup_childs()
 
     for(r=0;r<MAX_PROCESSES;r++)
     {
-	if (pids[r]>0) 
+	if (pids[r]>0)
 	    {
 #ifndef USE_TLS
                 if ((r == 4)||(r == 5)) continue;
@@ -152,17 +158,17 @@ int cleanup(int how)
     LOG("pid %d cleaning up.is_main=%d is_udp=%d is_tls=%d is_timer=%d\n",getpid(),is_main,is_udp,is_tls,is_timer);
     cleanup_vector();
 #ifdef USE_TLS
-    destroy_shm();    
+    destroy_shm();
 #endif
 
-    if (is_main) 
+    if (is_main)
     {
 	if (how == 0) cleanup_childs();
 	if (how == 0)
-	    if (pid_file) 
+	    if (pid_file)
     		LOG("unlink returned %d\n",unlink(pid_file));
     }
-    
+
     //closing sockets
     if (bind_address)
 	{
@@ -177,23 +183,23 @@ int cleanup(int how)
     if (alternate_address)
 	{
 	    //close socket
-	    if (alternate_address->socket > 0) close(alternate_address->socket);	    
+	    if (alternate_address->socket > 0) close(alternate_address->socket);
 	    free(alternate_address);
 	}
     if (alternate_address_port)
 	{
 	    //close socket
-	    if (alternate_address_port->socket > 0) close(alternate_address_port->socket);	    
+	    if (alternate_address_port->socket > 0) close(alternate_address_port->socket);
 	    free(alternate_address_port);
 	}
 #ifdef USE_TLS
     if (tls_bind_address)
 	{
-	    if (tls_bind_address->socket > 0) close(tls_bind_address->socket);	
+	    if (tls_bind_address->socket > 0) close(tls_bind_address->socket);
 	    free(tls_bind_address);
-	}	
+	}
 #endif
-    
+
     return 0;
 }
 
@@ -207,15 +213,15 @@ void handle_sigs(int sem)
 
     if ((sem == SIGTERM)||(sem == SIGINT))
     {
-	cleanup(0);   
-	exit(0); 
+	cleanup(0);
+	exit(0);
     }
 }
 
 struct socket_info * duplicate_sock_info(struct socket_info* original)
 {
     struct socket_info *res;
-    
+
     res = NULL;
     res = (struct socket_info *)malloc(sizeof(struct socket_info));
     if (res == NULL)
@@ -228,87 +234,105 @@ int initialize_server()
 {
     int r;
     int f,s;
-    
 
-    //we locate two interfaces available, from which none is the loopback    
-    f = s = -1;
-    if ((first_interface == -1)&&(second_interface == -1))
-{
-    for (r=0;r<sock_no;r++)
-    {
-        if (!sock_info[r].is_lo)
+    if (use_interfaces) {
+        f = s = -1;
+        if ((first_interface == -1)&&(second_interface == -1))
+        {
+            // get the first two interfaces (exclude loopback)
+            for (r=0;r<sock_no;r++)
             {
-                //break;
-		if (f != -1) //the second
+                if (!sock_info[r].is_lo)
+                {
+                    //break;
+                    if (f != -1) //the second
 		    {
 			s = r;
-			LOG("Using [%.*s]:%d as alternate bind address\n",sock_info[r].name.len,sock_info[r].name.s,default_port);                
+			LOG("Using [%.*s]:%d as alternate bind address\n",sock_info[r].name.len,sock_info[r].name.s,default_port);
 			break;
 		    }
-		else
+                    else
 		    {
-		        LOG("Using [%.*s]:%d as main bind address\n",sock_info[r].name.len,sock_info[r].name.s,default_port);                 
-			f = r;                
+		        LOG("Using [%.*s]:%d as main bind address\n",sock_info[r].name.len,sock_info[r].name.s,default_port);
+			f = r;
 		    }
+                }
+                else
+                {
+                    LOG("NOT using [%.*s]:%d as main bind address.Loopback reason.\n",sock_info[r].name.len,sock_info[r].name.s,default_port);
+                }
             }
+        }
         else
-            {
-                LOG("NOT using [%.*s]:%d as main bind address.Loopback reason.\n",sock_info[r].name.len,sock_info[r].name.s,default_port);                
-            }
-    }
-}
-    else
-    {
-	//we set the interfaces by command line argument -i
-	f = first_interface;
-	s = second_interface;
-    }    
+        {
+            // we set the interfaces by command line argument -i
+            f = first_interface;
+            s = second_interface;
+        }
 
-    if ((f == -1)||(s == -1))
+        if ((f == -1)||(s == -1))
 	{
 	    LOG("Unable to obtain two (2) addresses.\n");
 	    return -1;
 	}
+    }
+    else
+    {
+        /* use IP addresses specified on the command line */
+	if (ip2socket_info(&sock_info[0], first_address) == -1) {
+	   LOG("Cannot initialize first IP address");
+	   return -1;
+	}
+
+	if (ip2socket_info(&sock_info[1], second_address) == -1) {
+	   LOG("Cannot initialize second IP address");
+	   return -1;
+	}
+
+	sock_no = 2;
+        f = 0; s = 1;
+    }
+
     //saving the ports
     if ((bind_address = duplicate_sock_info(&sock_info[f])) == NULL) goto init_error1;
     bind_address->port_no = default_port;
-    
+
     if ((bind_address_port = duplicate_sock_info(&sock_info[f])) == NULL) goto init_error1;
     bind_address_port->port_no = default_alternate_port;
-    
+
     if ((alternate_address = duplicate_sock_info(&sock_info[s])) == NULL) goto init_error1;
     alternate_address->port_no = default_port;
-    
+
     if ((alternate_address_port = duplicate_sock_info(&sock_info[s])) == NULL) goto init_error1;
     alternate_address_port->port_no = default_alternate_port;
-    
-    if (udp_init(bind_address) == -1) 
-        {   
+
+    if (udp_init(bind_address) == -1)
+        {
             LOG("Unable to udp_init bind_address\n");
             //goto error;
 	    return -1;
         }
-    if (udp_init(bind_address_port) == -1) 
-        {   
+    if (udp_init(bind_address_port) == -1)
+        {
             LOG("Unable to udp_init bind_address_port\n");
             //goto error;
 	    return -2;
         }
-    if (udp_init(alternate_address) == -1) 
-        {   
+    if (udp_init(alternate_address) == -1)
+        {
             LOG("Unable to udp_init alternate_address\n");
             //goto error;
 	    return -1;
         }
-    if (udp_init(alternate_address_port) == -1) 
-        {   
+    if (udp_init(alternate_address_port) == -1)
+        {
             LOG("Unable to udp_init alternate_address_port\n");
             //goto error;
 	    return -2;
         }
-	
+
     LOG("udp_init succeeded\n");
-#ifdef USE_TLS    
+#ifdef USE_TLS
     if (init_shm(1) < 0)
 	{
 	    LOG("init_server:failing init_shm\n");
@@ -320,14 +344,14 @@ int initialize_server()
     return 0;
 init_error1:
     cleanup(0);
-    return -1;    
+    return -1;
 }
 
 int child_function(int id)
 {
     struct socket_info *b,*bp,*a,*ap;
     int sleep_time;
-    
+
     is_main = 0;
     b = bind_address;
     bp = bind_address_port;
@@ -335,28 +359,28 @@ int child_function(int id)
     ap = alternate_address_port;
 
     //each of the childs has the main address different from the other
-    if (id == 1) 
+    if (id == 1)
 	{
 	    bind_address = b;
 	    bind_address_port = bp;
 	    alternate_address = a;
 	    alternate_address_port = ap;
 	}
-    if (id == 2) 
+    if (id == 2)
 	{
 	    bind_address = bp;
 	    bind_address_port = b;
 	    alternate_address = ap;
 	    alternate_address_port = a;
 	}
-    if (id == 3) 
+    if (id == 3)
 	{
 	    bind_address = a;
 	    bind_address_port = ap;
 	    alternate_address = b;
 	    alternate_address_port = bp;
 	}
-    if (id == 4) 
+    if (id == 4)
 	{
 	    bind_address = ap;
 	    bind_address_port = a;
@@ -367,24 +391,24 @@ int child_function(int id)
     if (id <= 4)
     {
     is_udp = 1;
-    LOG("Child %d [%d] started ...\n",id,getpid());	
+    LOG("Child %d [%d] started ...\n",id,getpid());
     LOG("Listening on:\n");
     LOG("\tb [%d]	%.*s:%d\n",id,bind_address->name.len,bind_address->name.s,bind_address->port_no);
     LOG("\tbp[%d]	%.*s:%d\n",id,bind_address_port->name.len,bind_address_port->name.s,bind_address_port->port_no);
     LOG("\ta [%d]	%.*s:%d\n",id,alternate_address->name.len,alternate_address->name.s,alternate_address->port_no);
     LOG("\tap[%d]	%.*s:%d\n",id,alternate_address_port->name.len,alternate_address_port->name.s,alternate_address_port->port_no);
-    
+
     /*
     for(i=1;i<THREADS_PER_SOCKET;i++)
 	{
 	    fork();
 	}
-    */	
+    */
     return udp_rcv_loop();
 
     }
 
-#ifdef USE_TLS    
+#ifdef USE_TLS
     //start the TLS server
     if (id == 5)
     {
@@ -392,16 +416,16 @@ int child_function(int id)
 	is_tls = 1;
 	init_tls();
 	tls_bind_address = duplicate_sock_info(bind_address);
-		
-	if (tls_init(tls_bind_address) != 1) 
+
+	if (tls_init(tls_bind_address) != 1)
             {
                 LOG("TLS bind failed:trying after 25 seconds\n");
                 sleep(10);
-                if (tls_init(tls_bind_address) != 1) 
+                if (tls_init(tls_bind_address) != 1)
                 {
                     LOG("Second TLS bind failed.Givving Up\n");
                     for(;;) pause();
-                   
+
                 }
                 else LOG("TLS succeeded from second attempt\n");
             }
@@ -417,7 +441,7 @@ int child_function(int id)
 	//timer server scope is to detect expired credentials
 	is_timer = 1;
 	LOG("[%d] timer activated\n",getpid());
-		
+
 	sleep_time = -1;
 	while(1)
 	{
@@ -428,7 +452,7 @@ int child_function(int id)
 
 	    LOG("[%d] timer activates now sleep_time=%d\n",getpid(),sleep_time);
 	}
-				
+
 
     }
 #endif
@@ -439,8 +463,8 @@ int start_server()
 {
     int r;
     int pid;
-    
-    
+
+
     r = initialize_server();
     if (r < 0)
 	{
@@ -448,11 +472,11 @@ int start_server()
 	    return -1;
 	}
     //we start the 6 processes:
-    // 4 listen on udp, one on TLS and one is a timer	
+    // 4 listen on udp, one on TLS and one is a timer
     for (r=0;r<MAX_PROCESSES;r++)
     {
                 pid = fork();
-		if (pid<0)	    
+		if (pid<0)
 		    {
 			LOG("start_server:cannot fork\n");
 			return -2;
@@ -470,7 +494,7 @@ int start_server()
     }
 	if (dont_fork == 1)
 	{
-	    for(;;)    
+	    for(;;)
     	        pause();
 	}
 	else
@@ -480,148 +504,167 @@ int start_server()
 	    while(wait(0)>0);
 	    return 0;
 	}
-    	    		    
-		
+
+
     //LOG("starting server ... ok\n");
-        
+
     return 0;
 }
 #if COMPILE_SERVER
 int main(int argc,char **argv)
 {
-    int r; 
-    char *options;    
-    //char tmp[11];
+    int r;
+    char *options;
     char *tmp;
-    char c;    
-    
-    options="P:p:i:a:n:u:g:w:c:vhDEws:";
-	
-	while((c=getopt(argc,argv,options))!=-1){
-		switch(c){
-			case 'i':
-					//choose interfaces
-					first_interface = optarg[0]-'1';
-					second_interface = optarg[2]-'1';
-					fprintf(stderr,"using intefaces:%d and %d\n",first_interface,second_interface);
-					break;
-			case 'p':
-					tmp = 0;
-					default_port = strtol(optarg, &tmp, 10);
-					if (tmp &&(*tmp)){
-						fprintf(stderr, "bad port number: -p [%s] %d\n", optarg,default_port);
-						goto error;
-					}
-					break;
-			case 'a':
-					tmp = 0;
-					default_alternate_port = strtol(optarg, &tmp, 10);
-					if (tmp &&(*tmp)){
-						fprintf(stderr, "bad port number: -p %s\n", optarg);
-						goto error;
-					}
-					break;
+    char c;
 
-			case 'n':
-					children_no=strtol(optarg, &tmp, 10);
-					if ((tmp==0) ||(*tmp)){
-						fprintf(stderr, "bad process number: -n %s\n",optarg);
-						goto error;
-					}
-					break;
-			case 'D':
-					dont_fork=0;
-					break;
-			case 'E':
-					log_stderr=1;
-					break;
-			case 'v':
-					printf("version: %s\n", version);
-                			printf("compiled: %s\n",compiled);			
-					exit(0);
-					break;
-            
-			case 'h':
-					printf("%s",help_msg);
-					exit(0);
-					break;
-			case 'w':
-					working_dir=optarg;
-					break;
-			case 't':
-					chroot_dir=optarg;
-					break;
-			case 'u':
-					user=optarg;
-					break;
-			case 'g':
-					group=optarg;
-					break;
-			case 'P':
-					pid_file=optarg;
-					break;
-			case 'c':
-#ifdef USE_TLS
-					tls_cert_file=optarg;
-#endif
-					break;
-			case 'k':
-#ifdef USE_TLS
-					tls_pkey_file=optarg;
-#endif
-					break;
-                  
-			case '?':
-					if (isprint(optopt))
-						fprintf(stderr, "Unknown option `-%c.\n", optopt);
-					else
-						fprintf(stderr, 
-								"Unknown option character `\\x%x.\n",
-								optopt);
-					goto error;
-			case ':':
-					fprintf(stderr, 
-								"Option `-%c requires an argument.\n",
-								optopt);
-					goto error;
-			default:
-					abort();
-		}
-	}
+    options="P:p:i:I:a:n:u:g:w:c:vhDEws:";
 
+    use_interfaces = -1;
 
-    if ((dont_fork == 0) && (daemonize() < 0)) 
+    while((c=getopt(argc,argv,options))!=-1){
+        switch(c){
+        case 'i':
+            /* use interfaces specified by their number (!?) */
+            if (use_interfaces == 0) {
+                fprintf(stderr, "either only -i or -I option can be used\n");
+                goto error;
+            }
+
+            use_interfaces = 1;
+            first_interface = optarg[0]-'1';
+            second_interface = optarg[2]-'1';
+            fprintf(stderr,"using intefaces: %d and %d\n",first_interface,second_interface);
+            break;
+
+        case 'I':
+            /* IPv4 addresses */
+            if (use_interfaces == 1) {
+                fprintf(stderr, "either only -i or -I option can be used\n");
+                goto error;
+            }
+
+            use_interfaces = 0;
+            if (sscanf(optarg, "%15[^,],%15s", first_address, second_address) != 2) {
+                fprintf(stderr,"invalid specification of IP addresses\n");
+                goto error;
+            }
+            break;
+
+        case 'p':
+            tmp = 0;
+            default_port = strtol(optarg, &tmp, 10);
+            if (tmp &&(*tmp)){
+                fprintf(stderr, "bad port number: -p [%s] %d\n", optarg,default_port);
+                goto error;
+            }
+            break;
+
+        case 'a':
+            tmp = 0;
+            default_alternate_port = strtol(optarg, &tmp, 10);
+            if (tmp &&(*tmp)){
+                fprintf(stderr, "bad port number: -p %s\n", optarg);
+                goto error;
+            }
+            break;
+
+        case 'n':
+            children_no=strtol(optarg, &tmp, 10);
+            if ((tmp==0) ||(*tmp)){
+                fprintf(stderr, "bad process number: -n %s\n",optarg);
+                goto error;
+            }
+            break;
+        case 'D':
+            dont_fork=0;
+            break;
+        case 'E':
+            log_stderr=1;
+            break;
+        case 'v':
+            printf("version: %s\n", version);
+            printf("compiled: %s\n",compiled);
+            exit(0);
+            break;
+
+        case 'h':
+            printf("%s",help_msg);
+            exit(0);
+            break;
+        case 'w':
+            working_dir=optarg;
+            break;
+        case 't':
+            chroot_dir=optarg;
+            break;
+        case 'u':
+            user=optarg;
+            break;
+        case 'g':
+            group=optarg;
+            break;
+        case 'P':
+            pid_file=optarg;
+            break;
+        case 'c':
+# ifdef USE_TLS
+            tls_cert_file=optarg;
+# endif
+            break;
+        case 'k':
+# ifdef USE_TLS
+            tls_pkey_file=optarg;
+# endif
+            break;
+
+        case '?':
+            goto error;
+
+        default:
+            abort();
+        }
+    }
+
+    /* use interfaces for configuration by default */
+    if (use_interfaces == -1) {
+        use_interfaces = 1;
+    }
+
+    if ((dont_fork == 0) && (daemonize() < 0)) {
 	return -1;
-    
-    if (sock_no == 0)
-    if (add_interfaces(0,AF_INET,0) == -1) //ipv4 interfaces
-        {
+    }
+
+    if (use_interfaces) {
+        /*
+         * Get interfaces with IPv4 addresses
+         */
+        if (add_interfaces(0, AF_INET, 0) == -1) {
             LOG("error finding addresses\n");
             return -1;
         }
-    
-    for (r=0; r<sock_no;)
-    {
-		if (add_interfaces(sock_info[r].name.s, AF_INET,sock_info[r].port_no)!=-1)
-        {
-			/* success => remove current entry (shift the entire array)*/
-			free(sock_info[r].name.s);
-			memmove(&sock_info[r], &sock_info[r+1],(sock_no-r)*sizeof(struct socket_info));
-			sock_no --;
-			continue;
-		}
-		r++;
-	}
-    LOG("Located interfaces \n");
-    for(r=0;r<sock_no;r++)
-    {    
-	LOG("    [%.*s] ", sock_info[r].name.len,sock_info[r].name.s);
-        LOG("ip->");print_ip(&(sock_info[r].address));
-        LOG("\n");
+
+        for (r=0; r<sock_no;) {
+            if (add_interfaces(sock_info[r].name.s, AF_INET,sock_info[r].port_no)!=-1) {
+                /* success => remove current entry (shift the entire array)*/
+                free(sock_info[r].name.s);
+                memmove(&sock_info[r], &sock_info[r+1],(sock_no-r)*sizeof(struct socket_info));
+                sock_no --;
+                continue;
+            }
+            r++;
+        }
+
+        LOG("Located interfaces\n");
+        for(r=0;r<sock_no;r++) {
+            LOG("    [%.*s] ", sock_info[r].name.len,sock_info[r].name.s);
+            LOG("ip->");print_ip(&(sock_info[r].address));
+            LOG("\n");
+        }
     }
-    
+
     LOG("Before daemonize pid is [%d] parent [%d]\n",getpid(),getppid());
-   
+
     /* INSTALL SIGNAL HANDLERS HERE, SO WE SHOULD NOT RECEIVE SIGNALS FROM daemonize */
     signal(SIGINT,handle_sigs);
     signal(SIGTERM,handle_sigs);
@@ -631,7 +674,7 @@ int main(int argc,char **argv)
 
     /* create the childs */
     r = start_server();
-    
+
     return (0);
 error:
     cleanup(0);

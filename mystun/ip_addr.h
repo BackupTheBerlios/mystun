@@ -511,4 +511,36 @@ struct hostent* ip_addr2he(str* name, struct ip_addr* ip)
 }
 
 
+/* 
+ * Initialize socket_info entry by an IP(v4) address
+ *
+ * Returns 0 on success, -1 otherwise.
+ */
+static 
+#ifndef WIN32
+inline 
 #endif
+int ip2socket_info(struct socket_info *si, const char *ip)
+{
+    struct in_addr addr;
+
+    if (inet_aton(ip, &addr) == 0) {
+        LOG("Malformed IP address `%s'\n", ip);
+        return -1;
+    }
+
+    si->name.len = strlen(ip);
+    if ((si->name.s = strdup(ip)) == NULL) {
+        LOG("Out of memory\n");
+        return -1;
+    };
+
+    si->address.af = AF_INET;
+    si->address.len = 4;
+    memcpy(si->address.u.addr, &addr, sizeof(struct in_addr));
+
+    return 0;
+}
+
+
+#endif /* !ip_addr_h */

@@ -9,8 +9,6 @@ for a particular purpose, performance, etc.
 Nevertheless, our experimental operation on a linux machine 
 with an interface with two IP addresses has been just fine.
 
-The command to compile working server on our system is:
-	gcc -o mystund *.c -lpthread
 
 Developer notes 
 ---------------
@@ -20,6 +18,8 @@ guaranteed to work between processes on linux, and in this
 case the only work because they are initialized in shared
 memory.
 
+    (Ondra) pthread semafores are no longer used
+  
 (Jiri): in PID file, ID of process is recorded which
 disappears during daemonization;
 

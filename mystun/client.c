@@ -57,13 +57,16 @@
 #endif
 #include <string.h>
 
-static char help[] = "\n\t-d address of STUN server \n"
-"\t-p port of STUN server \n"
-"\t-s source address of request\n"
-"\t-P port of the request\n"
-"\t-e show debug information\n"
-"\t-v version and compile info\n"
-"\t-h help message(this message)\n\n";
+static char help[] =
+"Usage: mystun-client [OPTIONS]\n"
+"Options:\n"
+"    -d address of STUN server\n"
+"    -p port of STUN server\n"
+"    -s source address of request\n"
+"    -P port of the request\n"
+"    -e show debug information\n"
+"    -v version and compile info\n"
+"    -h help message(this message)\n\n";
 static t_uint16 default_destination_port = 3478;
 static t_uint16 default_source_port = 50001;
 static char *version = "0.0.2";
@@ -251,7 +254,7 @@ int  get_sending_socket()
     if (log_1) LOG("Located %d interfaces \n",sock_number);
     for(r=0;r<sock_number;r++)
     {
-	if (log_1) 
+	if (log_1)
 	{
 	    LOG("    [%.*s] ", sock_info[r].name.len,sock_info[r].name.s);
     	    LOG("ip->");print_ip(&(sock_info[r].address));
@@ -321,101 +324,95 @@ int linux_main(int argc, char **argv)
 	//printf("Argc:%d\n",argc);
 	if (argc == 1)
 	{
-		printf("USAGE:%s\n",help);
+		printf("%s", help);
 		return 0;
 	}
-	
+
 	log_1 = 0;
 	options="i:d:p:P:vhe";
 
 	while((c=getopt(argc,argv,options))!=-1)
-	{
-			switch(c)
-			{
-				case 'e':
-							log_1 = 1;
-							break;
-				case 'i':
-						tmp = 0;
-						sinterface = strtol(optarg, &tmp, 10);
-						if (tmp &&(*tmp))
-						{
-							fprintf(stderr, "bad interface number: -i [%s]\n", optarg);
-							return 2;
-						}
+        {
+            switch(c)
+            {
+            case 'e':
+                log_1 = 1;
+                break;
+            case 'i':
+                tmp = 0;
+                sinterface = strtol(optarg, &tmp, 10);
+                if (tmp &&(*tmp))
+                {
+                    fprintf(stderr, "bad interface number: -i [%s]\n", optarg);
+                    return 2;
+                }
 
-						break;
-				case 'd':
-						if (strlen(optarg) >= MAX_ADDRESS_LEN)
-						{
-							fprintf(stderr,"destination address to big.try a shorter address\n");
-							return 1;
-						}
-						memset(daddress,0,MAX_ADDRESS_LEN);
-						memcpy(daddress,optarg,strlen(optarg));
+                break;
+            case 'd':
+                if (strlen(optarg) >= MAX_ADDRESS_LEN)
+                {
+                    fprintf(stderr,"destination address to big.try a shorter address\n");
+                    return 1;
+                }
+                memset(daddress,0,MAX_ADDRESS_LEN);
+                memcpy(daddress,optarg,strlen(optarg));
 
-						break;
-				case 'p':
-						tmp = 0;
-						default_destination_port = strtol(optarg, &tmp, 10);
-						if (tmp &&(*tmp))
-						{
-							fprintf(stderr, "bad port number: -p [%s] %d\n", optarg,default_destination_port);
-							return 2;
-						}
-						break;
+                break;
+            case 'p':
+                tmp = 0;
+                default_destination_port = strtol(optarg, &tmp, 10);
+                if (tmp &&(*tmp))
+                {
+                    fprintf(stderr, "bad port number: -p [%s] %d\n", optarg,default_destination_port);
+                    return 2;
+                }
+                break;
 
-				case 'P':
-						tmp = 0;
-						default_source_port = strtol(optarg, &tmp, 10);
-						if (tmp &&(*tmp))
-						{
-							fprintf(stderr, "bad port number: -p [%s] %d\n", optarg,default_source_port);
-							return 3;
-						}
-						break;
+            case 'P':
+                tmp = 0;
+                default_source_port = strtol(optarg, &tmp, 10);
+                if (tmp &&(*tmp))
+                {
+                    fprintf(stderr, "bad port number: -p [%s] %d\n", optarg,default_source_port);
+                    return 3;
+                }
+                break;
 
-				case 'v':
-						printf("version: %s\n", version);
-               					printf("compiled: %s\n",compiled);
-						return 0;
-						break;
+            case 'v':
+                printf("version: %s\n", version);
+                printf("compiled: %s\n",compiled);
+                return 0;
+                break;
 
-				case 'h':
-						printf("%s",help);
-						return 0;
-						break;
+            case 'h':
+                printf("%s",help);
+                return 0;
+                break;
 /*
-				case 'c':
-	#ifdef USE_TLS
-						tls_cert_file=optarg;
-	#endif
-						break;
-				case 'k':
-	#ifdef USE_TLS
-						tls_pkey_file=optarg;
-	#endif
-						break;
+            case 'c':
+#ifdef USE_TLS
+                tls_cert_file=optarg;
+#endif
+                break;
+            case 'k':
+#ifdef USE_TLS
+                tls_pkey_file=optarg;
+#endif
+                break;
 */
-				case '?':
-						if (isprint(optopt))
-							fprintf(stderr, "Unknown option `-%c´.\n", optopt);
-						else
-							fprintf(stderr,"Unknown option character `\\x%x´.\n",optopt);
-						return 4;
-				case ':':
-						fprintf(stderr,"Option `-%c´ requires an argument.\n",optopt);
-						return 5;
-				default:
-						return 0;
-			}
-		}
+            case '?':
+		return 4;
+		
+            default:
+                return 0;
+            }
+        }
 
-	r = get_sending_socket();
-	if (r < 0)
-	{
-	    if (log_1) LOG("Failed to obtain sending address\n");
-	    return 7;
+        r = get_sending_socket();
+        if (r < 0)
+        {
+            if (log_1) LOG("Failed to obtain sending address\n");
+            return 7;
 	}
 
 	si = sock_info[r];
@@ -521,7 +518,7 @@ int win_main(int argc, char **argv)
 	{
 		mode = 2;//client [default address:port] server port debug
 		log_1 = 1;
-	}	
+	}
 	if (argc == 5)
 	{
 		mode = 3;//client default address:port server port [debug]
@@ -541,14 +538,14 @@ int win_main(int argc, char **argv)
 		printf("        \n\tclient default_address default_port server port debug\n");
 		printf("Version :%30s\n",version);
 		printf("Compiled:%30s\n",compiled);
-		
+
 		return 0;
 	}
 
 	/* printf("Using mode %d\n",mode);*/
 	tmp = 0;
 	if ((mode == 1)||(mode == 2)) default_destination_port = strtol(argv[2], &tmp, 10);
-	else 
+	else
 		if ((mode == 3)||(mode == 4)) default_destination_port = strtol(argv[4], &tmp, 10);
 
 	if (tmp &&(*tmp))
@@ -573,7 +570,7 @@ int win_main(int argc, char **argv)
 	}
 
 	ret = gethostname((char *)hostname,1022);
-	if (log_1) 
+	if (log_1)
 	{
 		if (ret < 0) LOG("ERROR:gethostname\n");
 		else LOG("HOSTNAME:%s\n",hostname);
@@ -589,7 +586,7 @@ int win_main(int argc, char **argv)
 	/*
 	if (WSAGetLastError() != 0)
 	{
-	  if (log_1) 
+	  if (log_1)
 	  {
 		  LOG("gethostname error.code is %d:",WSAGetLastError());
 		  DisplayErrorText(WSAGetLastError());
@@ -604,7 +601,7 @@ int win_main(int argc, char **argv)
 		if (log_1) LOG("ERROR:you are not using IPv4 !?\n");
 		return 22;
 	}
-	
+
 	memcpy(&ip,localHost->h_addr_list[0],4);
 	/* windows does not put the loopback address in here so it's sure a good address */
 	if (ip == 0)
@@ -612,10 +609,10 @@ int win_main(int argc, char **argv)
 		if (log_1) LOG("ERROR:you do not seem to have a network connection !\n");
 	}
 	if (log_1) LOG("Detected IP is %X\n",ip);
-/*	
+/*
     if ( isdigit( argv[1][0] ) )
 	{
-		ip = inet_addr(argv[1]);		
+		ip = inet_addr(argv[1]);
 	    //ip = ntohl( ip );
 	}
 	else
@@ -642,14 +639,14 @@ int win_main(int argc, char **argv)
 
 	si.address = ipad;
 	si.port_no = default_source_port;
-	
+
 	/* obtaining the destination address */
 	if ((mode == 1)||(mode == 2)) ret = 1;
-		else 
+		else
 		if ((mode == 3)||(mode == 4)) ret = 3;
     if ( isdigit( argv[ret][0] ) )
 	{
-		ip = inet_addr(argv[ret]);		
+		ip = inet_addr(argv[ret]);
 	    //ip = ntohl( ip );
 	}
 	else
@@ -666,7 +663,7 @@ int win_main(int argc, char **argv)
 		   ip = ( sin_addr.s_addr );
 	   }
 	  }
-	
+
 	/*if (log_1) LOG("Sending to ip %x\n",ip);*/
 
 	memcpy(&ia.sin_addr,&ip,4);
@@ -721,7 +718,7 @@ int win_main(int argc, char **argv)
 	return 0;
 }
 
-#endif 
+#endif
 int main(int argc, char **argv)
 {
 #ifndef WIN32
