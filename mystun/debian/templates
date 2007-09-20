@@ -14,5 +14,3 @@ Description: Addresses to listen on:
  adresses. Please specify addresses which Mystun will be listening
  on. If you leave this option blank then Mystun will select first two
  interfaces (not recommneded).
-
- 
