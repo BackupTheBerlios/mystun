@@ -1,0 +1,13 @@
+Source: mystun
+Section: unknown
+Priority: optional
+Maintainer: Pavel Kasparek <pavel@iptel.org>
+Build-Depends: debhelper (>= 4.0.0)
+Standards-Version: 3.6.0
+
+Package: mystun
+Architecture: any
+Depends: ${shlibs:Depends}, ${misc:Depends}
+Description: Mystun serevr
+ Mystun is iptel.org implementation of STUN server.
+

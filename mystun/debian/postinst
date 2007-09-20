@@ -1,0 +1,127 @@
+#!/bin/sh
+
+set -e
+
+# don't do anything when called with other argument than configure 
+case "$1" in
+  configure)
+  ;;  
+  abort-upgrade|abort-remove|abort-deconfigure)
+    exit 0
+  ;;
+  *)
+    echo "postinst called with unknown argument \$1'" >&2
+    exit 1
+  ;;
+esac
+
+
+. /usr/share/debconf/confmodule
+
+echo "Adding mystun user account"
+adduser --quiet --firstuid 10000 --disabled-password \
+	--shell /bin/false --gecos "mystun user" \
+        --home /var/run/mystun mystun || true
+
+CONFIGFILE=/etc/default/mystun
+
+if ! test -e $CONFIGFILE; then
+  echo "Warning: can't find config file $CONFIGFILE. Configuration aborted."
+  exit 0
+fi
+
+
+
+function fn_config_replace 
+{
+	if test $# -ne 2; then
+	  echo "Error - bad number of input parameters"
+	  echo "usage:"
+	  echo "fn_config_replace config_file CFG_OPTION_something" 
+	  exit 1
+	fi
+
+	FILENAME="$1"
+	ITEM="$2"
+
+	echo "Changing config option $ITEM."
+	OLDFILE="$FILENAME.config_replace_bck"
+	cp -f $FILENAME $OLDFILE
+
+	REPLACEMENT="$FILENAME.repl"
+	TEMPFILE="$FILENAME.temp"
+	TAIL="$FILENAME.tail"
+
+	rm -f $REPLACEMENT
+	touch $REPLACEMENT # needed if the input is empty
+	while read -r LINE
+	do
+	  echo "$LINE" >> $REPLACEMENT
+	done
+
+	STARTPOS=`nl -b a $FILENAME | grep -w "CFGOPTION_$ITEM" | sed -e "s/^ *\([0-9]*\).*/\1/g"`
+	if [ "$STARTPOS" == "" ]; then
+		echo "WARNING: section $ITEM not found"
+		return
+	fi
+		
+	ENDPOS=`nl -b a $FILENAME | sed -e "1,${STARTPOS}d" | grep ENDCFGOPTION | head -n 1 | sed -e "s/^ *\([0-9]*\).*/\1/g"`
+	if [ "$STARTPOS" == "" ]; then
+		echo "WARNING: end of section $ITEM not found"
+		return
+	fi
+	ENDPOS=$(($ENDPOS-1))
+	STARTPOS=$(($STARTPOS+1))
+
+	cat $FILENAME | sed -e "1,${ENDPOS}d" > $TAIL
+	cat $FILENAME | sed -e "${STARTPOS},\$d" > $TEMPFILE
+	cat $REPLACEMENT >> $TEMPFILE
+	cat $TAIL >> $TEMPFILE
+	rm -f $TAIL
+	mv -f $TEMPFILE $FILENAME
+}
+
+# pads $1 with as many empty rows as needed until $2 lines are complete
+padLines() {
+	output="$1"
+	needed="$2"
+	num=`echo "$output" | wc -l`
+	echo "$output"
+	moreneeded=$(($needed-$num))
+	while (true); do
+	if [ $moreneeded -gt 0 ]
+	then
+		echo ""
+		moreneeded=$(($moreneeded-1))
+	else
+		break
+	fi
+	done
+}
+
+
+
+db_get mystun/config
+if [ "$RET" = "false" ] ; then
+  # do not change config file
+  echo "Package mystun config script: NOT modifying configuration."
+else
+
+  db_get mystun/ADDRESSES
+  echo "ADDRESSES=$RET" | fn_config_replace $CONFIGFILE ADDRESSES
+
+fi
+
+
+echo ""
+echo "***"
+echo "Configuration of mystun daemon has finished."
+echo ""
+echo "To restart it when configuration has changed use '/etc/init.d/mystun restart'"
+echo "***"
+echo ""
+
+#DEBHELPER#
+
+exit 0
+

@@ -1,0 +1,17 @@
+#!/bin/sh -e
+
+. /usr/share/debconf/confmodule
+
+# configure ?
+db_input medium mystun/config || true
+db_go
+
+db_get mystun/config
+
+if [ "$RET" = "false" ]; then
+  exit 0
+fi
+
+db_input medium mystun/ADDRESSES || true
+db_go
+

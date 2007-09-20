@@ -1,0 +1,20 @@
+# Defaults for mystun initscript
+# sourced by /etc/init.d/mystun
+
+# Additional options that are passed to the Daemon.
+DAEMON_OPTS="-w /var/run/mystun -D"
+
+# port to listen on
+PRIMARY_PORT=3478
+# alternate port
+SECONDARY_PORT=3479
+
+# whom the daemons should run as
+DAEMON_USER=mystun
+
+# addresses to listen on (-I option)
+#CFGOPTION_ADDRESSES
+#ADDRESSES=192.168.0.1,10.0.0.+
+#ENDCFGOPTION
+
+

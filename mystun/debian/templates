@@ -1,0 +1,18 @@
+Template: mystun/config
+Type: boolean
+Default: false
+Description: Change configuration now ?
+ You have now opportunity to modify basic configuration of Mystun.
+ You can later modify config files manually, or re-run this configuartion by running
+ 'dpkg-reconfigure mystun'.
+
+Template: mystun/ADDRESSES
+Type: string
+Default: 19ě.168.0.1,10.0.0.1
+Description: Addresses to listen on:
+ Mystun server has to be configured to listen on two different public IP
+ adresses. Please specify addresses which Mystun will be listening
+ on. If you leave this option blank then Mystun will select first two
+ interfaces (not recommneded).
+
+ 
