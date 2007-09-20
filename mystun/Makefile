@@ -57,6 +57,8 @@ clean:
 
 install: all mk-install-dirs install-bin
 
+install-server: server mk-install-dirs install-server-bin
+
 mk-install-dirs: $(DESTDIR)/$(BIN-DIR)
 
 $(DESTDIR)/$(BIN-DIR):
@@ -65,4 +67,7 @@ $(DESTDIR)/$(BIN-DIR):
 install-bin: $(DESTDIR)/$(BIN-DIR)
 	$(INSTALL) $(SERVERNAME) $(DESTDIR)/$(BIN-DIR)
 	$(INSTALL) $(CLIENTNAME) $(DESTDIR)/$(BIN-DIR)
+
+install-server-bin: $(DESTDIR)/$(BIN-DIR)
+	$(INSTALL) $(SERVERNAME) $(DESTDIR)/$(BIN-DIR)
 
