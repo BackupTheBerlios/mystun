@@ -1,5 +1,5 @@
 Source: mystun
-Section: unknown
+Section: net
 Priority: optional
 Maintainer: Pavel Kasparek <pavel@iptel.org>
 Build-Depends: debhelper (>= 4.0.0)
